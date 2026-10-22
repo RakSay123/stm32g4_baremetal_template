@@ -86,10 +86,14 @@ UART_Status_t uart_write_buffer(USART_TypeDef *USARTx, const uint8_t *buffer, si
 
 UART_Status_t uart_write_string(USART_TypeDef *USARTx, const char *str)
 {
-	if (USARTx == NULL) return UART_ERROR_NULL;
+	if (USARTx == NULL || str == NULL) return UART_ERROR_NULL;
 
-	for (int i = 0; str[i] != '\0'; i++) {
-		uart_write_byte(USARTx, str[i]);
+	while (*str != '\0')
+	{
+		UART_Status_t status = uart_write_byte(USARTx, (uint8_t)*str);
+		if (status != UART_OK) return status;
+
+		str++;
 	}
 
 	return UART_OK;
