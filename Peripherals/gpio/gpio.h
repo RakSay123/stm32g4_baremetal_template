@@ -72,6 +72,12 @@ typedef struct {
 	uint8_t pin;
 } GPIO_Pin_t;
 
+typedef struct {
+	GPIO_TypeDef *port;
+	uint8_t pin;
+	GPIO_AF_t alt;
+} GPIO_AF_Pin_t;
+
 GPIO_Status_t gpio_enable_clock(GPIO_TypeDef *GPIOx);
 
 GPIO_Status_t gpio_mode_config(GPIO_TypeDef *GPIOx, uint8_t pin, GPIO_Mode_t mode);
