@@ -33,7 +33,7 @@ void app_update_print(uint32_t current_ms)
 	count++;
 
 	console_print_int(console, count);
-	console_println(console, ") Hello from stm32g474CEU6");
+	console_println(console, ") Test Flash Success!");
 }
 
 void app_init(void)
