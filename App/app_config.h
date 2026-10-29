@@ -1,4 +1,7 @@
 #pragma once
 
+#define ADC_VREF_VOLTAGE 3.3f
+#define ADC_MAX_CODE     4095.0f
+
 #define APP_STATUS_LED_PERIOD_MS 		500U
-#define APP_STATUS_PRINT_PERIOD_MS		1000U
+#define APP_STATUS_PRINT_PERIOD_MS		100U
