@@ -18,6 +18,10 @@ static TIM_Status_t timer_enable_clock(TIM_TypeDef *TIMx)
 	else if (TIMx == TIM20) RCC->APB2ENR |= RCC_APB2ENR_TIM20EN;
 	else return TIM_ERROR_INVALID_INSTANCE;
 
+	// Read back so the peripheral clock is active before the first register access
+	(void)RCC->APB1ENR1;
+	(void)RCC->APB2ENR;
+
 	return TIM_OK;
 }
 
@@ -62,14 +66,17 @@ TIM_Status_t timer_init(const TIM_Config_t *cfg)
 
 	if (cfg->psc > 0xFFFFU) return TIM_ERROR_INVALID_CONFIG;
 
-	if (!IS_TIM_32B_COUNTER_INSTANCE(TIMx) && (cfg->arr > 0xFFFFU || cfg->cnt > 0xFFFFU)) return TIM_ERROR_INVALID_CONFIG;
+	if (!IS_TIM_32B_COUNTER_INSTANCE(TIMx) && cfg->arr > 0xFFFFU) return TIM_ERROR_INVALID_CONFIG;
+
+	if (cfg->cnt > cfg->arr) return TIM_ERROR_INVALID_CONFIG;
 
 	TIM_Status_t status;
 
 	status = timer_enable_clock(TIMx);
 	if (status != TIM_OK) return status;
 
-	TIMx->CR1 &= ~TIM_CR1_CEN;
+	// Stops the counter and clears any leftover mode bits (OPM, DIR, CMS...)
+	TIMx->CR1 = 0;
 
 	TIMx->PSC = cfg->psc;
 	TIMx->ARR = cfg->arr;
@@ -109,6 +116,9 @@ static TIM_Status_t timer_wait(TIM_TypeDef *TIMx)
 TIM_Status_t timer_delay_s(TIM_TypeDef *TIMx, uint32_t s)
 {
 	if (TIMx == NULL) return TIM_ERROR_NULL;
+
+	// Polling would hang if the counter is stopped or an ISR is clearing UIF
+	if (!(TIMx->CR1 & TIM_CR1_CEN) || (TIMx->DIER & TIM_DIER_UIE)) return TIM_ERROR_INVALID_CONFIG;
 
 	for (uint32_t i = 0; i < s; i++)
 	{
