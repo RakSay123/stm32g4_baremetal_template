@@ -39,12 +39,12 @@ typedef struct {
 typedef struct {
 	ADC_TypeDef *instance;
 	ADC_Clock_Mode_t clk_mode;
-
 	uint8_t seq_len;
-
 	const ADC_Channel_Config_t *channels;
 } ADC_Config_t;
 
 ADC_Status_t adc_init(const ADC_Config_t *cfg);
 
 ADC_Status_t adc_read(ADC_TypeDef *ADCx, uint16_t *result);
+
+ADC_Status_t adc_disable(ADC_TypeDef *ADCx);

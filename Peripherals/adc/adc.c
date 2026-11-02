@@ -99,12 +99,52 @@ static ADC_Status_t adc_calibrate(ADC_TypeDef *ADCx)
 static ADC_Status_t adc_config_sequence(const ADC_Config_t *cfg)
 {
 	if (cfg == NULL || cfg->instance == NULL || cfg->channels == NULL) return ADC_ERROR_NULL;
+	if (get_adc_common(cfg->instance) == NULL) return ADC_ERROR_INVALID_CONFIG;
 	if (cfg->seq_len < 1 || cfg->seq_len > 16) return ADC_ERROR_INVALID_CONFIG;
-	if (cfg->channels[0].channel > 18) return ADC_ERROR_INVALID_CONFIG;
-	if (cfg->seq_len != 1) return ADC_ERROR_UNSUPPORTED;
 
-	cfg->instance->SQR1 = (cfg->instance->SQR1 & ~ADC_SQR1_L) | ((uint32_t)(cfg->seq_len - 1U) << ADC_SQR1_L_Pos); // Sets length to be 1
-	cfg->instance->SQR1 = (cfg->instance->SQR1 & ~ADC_SQR1_SQ1) | (cfg->channels->channel << ADC_SQR1_SQ1_Pos); // Sets channel to be rank 1, hardcoded, generalize later
+	ADC_TypeDef *ADCx = cfg->instance;
+
+	uint32_t busy_mask = ADC_CR_ADEN | ADC_CR_ADSTART | ADC_CR_JADSTART | ADC_CR_ADDIS;
+	if (ADCx->CR & busy_mask) return ADC_ERROR_BUSY;
+
+	uint32_t sqr1 = (uint32_t)(cfg->seq_len - 1U);
+	uint32_t sqr2 = 0;
+	uint32_t sqr3 = 0;
+	uint32_t sqr4 = 0;
+
+	for (uint8_t i = 0; i < cfg->seq_len; i++)
+	{
+		uint32_t channel = cfg->channels->channel;
+		uint32_t rank = i + 1U;
+
+		if (channel > 18U) return ADC_ERROR_INVALID_CONFIG;
+
+		if (rank <= 4U)
+		{
+			uint32_t position = 6U * rank;
+			sqr1 |= channel << position;
+		}
+		else if (rank <= 9U)
+		{
+			uint32_t position = 6U * (rank - 5U);
+			sqr2 |= channel << position;
+		}
+		else if (rank <= 14U)
+		{
+			uint32_t position = 6U * (rank - 10U);
+			sqr3 |= channel << position;
+		}
+		else
+		{
+			uint32_t position = 6U * (rank - 15U);
+			sqr4 |= channel << position;
+		}
+	}
+
+	ADCx->SQR1 = sqr1;
+	ADCx->SQR2 = sqr2;
+	ADCx->SQR3 = sqr3;
+	ADCx->SQR4 = sqr4;
 
 	return ADC_OK;
 }
@@ -112,26 +152,38 @@ static ADC_Status_t adc_config_sequence(const ADC_Config_t *cfg)
 static ADC_Status_t adc_config_sampling(const ADC_Config_t *cfg)
 {
 	if (cfg == NULL || cfg->instance == NULL || cfg->channels == NULL) return ADC_ERROR_NULL;
+	if (get_adc_common(cfg->instance) == NULL) return ADC_ERROR_INVALID_CONFIG;
+	if (cfg->seq_len < 1 || cfg->seq_len > 16) return ADC_ERROR_INVALID_CONFIG;
 
-	uint8_t channel = cfg->channels[0].channel;
-	ADC_Sample_Cycles_t sample_time = cfg->channels[0].sample_time;
+	ADC_TypeDef *ADCx = cfg->instance;
 
-	if (channel > 18 || (unsigned)sample_time > ADC_SMP_CYC_640_POINT_5) return ADC_ERROR_INVALID_CONFIG;
+	if (ADCx->CR & (ADC_CR_ADSTART | ADC_CR_JADSTART)) return ADC_ERROR_BUSY;
 
-	uint32_t busy_mask = ADC_CR_ADSTART | ADC_CR_JADSTART;
-	if (cfg->instance->CR & busy_mask) return ADC_ERROR_BUSY;
+	uint32_t smpr1 = ADCx->SMPR1;
+	uint32_t smpr2 = ADCx->SMPR2;
 
-	uint32_t position;
-	if (channel < 10)
+	for (uint8_t i = 0; i < cfg->seq_len; i++)
 	{
-		position = 3U * channel;
-		cfg->instance->SMPR1 = (cfg->instance->SMPR1 & ~(7U << position)) | ((uint32_t)sample_time << position);
+		uint8_t channel = cfg->channels[i].channel;
+		ADC_Sample_Cycles_t sample_time = cfg->channels[i].sample_time;
+
+		if (channel > 18 || (unsigned)sample_time > ADC_SMP_CYC_640_POINT_5) return ADC_ERROR_INVALID_CONFIG;
+
+		uint32_t position;
+		if (channel < 10)
+		{
+			position = 3U * channel;
+			smpr1 = (smpr1 & ~(7U << position)) | ((uint32_t)sample_time << position);
+		}
+		else
+		{
+			position = 3U * (channel - 10);
+			smpr2 = (smpr2 & ~(7U << position)) | ((uint32_t)sample_time << position);
+		}
 	}
-	else
-	{
-		position = 3U * (channel - 10);
-		cfg->instance->SMPR2 = (cfg->instance->SMPR2 & ~(7U << position)) | ((uint32_t)sample_time << position);
-	}
+
+	ADCx->SMPR1 = smpr1;
+	ADCx->SMPR2 = smpr2;
 
 	return ADC_OK;
 }
@@ -205,4 +257,22 @@ ADC_Status_t adc_read(ADC_TypeDef *ADCx, uint16_t *result)
 	*result = (uint16_t)ADCx->DR;
 
 	return ADC_OK;
+}
+
+ADC_Status_t adc_disable(ADC_TypeDef *ADCx)
+{
+    if (ADCx == NULL) return ADC_ERROR_NULL;
+
+    if (get_adc_common(ADCx) == NULL) return ADC_ERROR_INVALID_CONFIG;
+
+    if (!(ADCx->CR & ADC_CR_ADEN)) return ADC_OK;
+
+    uint32_t busy_mask = ADC_CR_ADSTART | ADC_CR_JADSTART | ADC_CR_ADSTP | ADC_CR_JADSTP | ADC_CR_ADCAL | ADC_CR_ADDIS;
+    if (ADCx->CR & busy_mask) return ADC_ERROR_BUSY;
+
+    ADCx->CR |= ADC_CR_ADDIS;
+
+    while (ADCx->CR & ADC_CR_ADEN) __NOP();
+
+    return ADC_OK;
 }
