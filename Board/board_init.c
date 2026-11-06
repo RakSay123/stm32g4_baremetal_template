@@ -36,7 +36,7 @@ BOARD_Status_t board_init(void)
 	ADC_Channel_Config_t adc_channels[] = {
 		{
 			.channel = 12,
-			.sample_time = ADC_SMP_CYC_47_POINT_5
+			.sample_time = ADC_SMP_CYC_12_POINT_5
 		}
 	};
 
@@ -56,7 +56,6 @@ BOARD_Status_t board_init(void)
 	if (led_init(status_led) != LED_OK) return BOARD_STATUS_LED_ERROR;
 
 	if (console_init(console) != CONSOLE_OK) return BOARD_STATUS_CONSOLE_ERROR;
-
 
 	return BOARD_STATUS_OK;
 }

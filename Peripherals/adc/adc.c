@@ -114,7 +114,7 @@ static ADC_Status_t adc_config_sequence(const ADC_Config_t *cfg)
 
 	for (uint8_t i = 0; i < cfg->seq_len; i++)
 	{
-		uint32_t channel = cfg->channels->channel;
+		uint32_t channel = cfg->channels[i].channel;
 		uint32_t rank = i + 1U;
 
 		if (channel > 18U) return ADC_ERROR_INVALID_CONFIG;
@@ -188,6 +188,17 @@ static ADC_Status_t adc_config_sampling(const ADC_Config_t *cfg)
 	return ADC_OK;
 }
 
+static ADC_Status_t adc_configure_mode(ADC_TypeDef *ADCx)
+{
+    if (ADCx == NULL) return ADC_ERROR_NULL;
+    if (get_adc_common(ADCx) == NULL) return ADC_ERROR_INVALID_CONFIG;
+    if (ADCx->CR & ADC_CR_ADEN) return ADC_ERROR_BUSY;
+
+    ADCx->CFGR &= ~(ADC_CFGR_CONT | ADC_CFGR_EXTEN   | ADC_CFGR_DMAEN   | ADC_CFGR_DMACFG  | ADC_CFGR_AUTDLY  | ADC_CFGR_OVRMOD  | ADC_CFGR_RES);
+
+    return ADC_OK;
+}
+
 static ADC_Status_t adc_enable(ADC_TypeDef *ADCx)
 {
 	if (ADCx == NULL) return ADC_ERROR_NULL;
@@ -233,26 +244,46 @@ ADC_Status_t adc_init(const ADC_Config_t *cfg)
 	status = adc_config_sampling(cfg);
 	if (status != ADC_OK) return status;
 
+	status = adc_configure_mode(cfg->instance);
+	if (status != ADC_OK) return status;
+
 	status = adc_enable(cfg->instance);
 	if (status != ADC_OK) return status;
 
 	return status;
 }
 
-ADC_Status_t adc_read(ADC_TypeDef *ADCx, uint16_t *result)
+ADC_Status_t adc_start(ADC_TypeDef *ADCx)
 {
-	if (ADCx == NULL || result == NULL) return ADC_ERROR_NULL;
+	if (ADCx == NULL) return ADC_ERROR_NULL;
 	if (get_adc_common(ADCx) == NULL) return ADC_ERROR_INVALID_CONFIG;
-
 	if (!(ADCx->CR & ADC_CR_ADEN)) return ADC_ERROR_BUSY;
-
-	if (ADCx->CR & (ADC_CR_ADSTART | ADC_CR_JADSTART)) return ADC_ERROR_BUSY;
+	if (ADCx->CR & (ADC_CR_ADSTART | ADC_CR_JADSTART | ADC_CR_ADSTP | ADC_CR_JADSTP | ADC_CR_ADDIS)) return ADC_ERROR_BUSY;
+	if (ADCx->ISR & ADC_ISR_OVR) return ADC_ERROR_OVERRUN;
 
 	ADCx->ISR = ADC_ISR_EOC | ADC_ISR_EOS;
 
 	ADCx->CR |= ADC_CR_ADSTART;
 
-	while (!(ADCx->ISR & ADC_ISR_EOC)) __NOP();
+	return ADC_OK;
+}
+
+bool adc_poll(ADC_TypeDef *ADCx)
+{
+	if (ADCx == NULL) return false;
+	if (get_adc_common(ADCx) == NULL) return false;
+
+	return (ADCx->ISR & ADC_ISR_EOC) != 0U;
+}
+
+ADC_Status_t adc_get_result(ADC_TypeDef *ADCx, uint16_t *result)
+{
+	if (ADCx == NULL || result == NULL) return ADC_ERROR_NULL;
+	if (get_adc_common(ADCx) == NULL) return ADC_ERROR_INVALID_CONFIG;
+	if (!(ADCx->CR & ADC_CR_ADEN)) return ADC_ERROR_BUSY;
+	if (ADCx->ISR & ADC_ISR_OVR) return ADC_ERROR_OVERRUN;
+	if (!(ADCx->ISR & ADC_ISR_EOC)) return ADC_PENDING;
+	if (ADCx->CR & (ADC_CR_ADSTART | ADC_CR_JADSTART)) return ADC_ERROR_BUSY;
 
 	*result = (uint16_t)ADCx->DR;
 
@@ -275,4 +306,16 @@ ADC_Status_t adc_disable(ADC_TypeDef *ADCx)
     while (ADCx->CR & ADC_CR_ADEN) __NOP();
 
     return ADC_OK;
+}
+
+ADC_Status_t adc_read(ADC_TypeDef *ADCx, uint16_t *result)
+{
+    if (result == NULL) return ADC_ERROR_NULL;
+
+    ADC_Status_t status = adc_start(ADCx);
+    if (status != ADC_OK) return status;
+
+    while (!adc_poll(ADCx)) __NOP();
+
+    return adc_get_result(ADCx, result);
 }

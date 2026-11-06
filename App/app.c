@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 #include <math.h>
 
 #include "app.h"
@@ -18,6 +19,11 @@ static CONSOLE_t *console;
 static uint32_t previous_toggle_ms;
 static uint32_t previous_print_ms;
 
+static bool adc_waiting = false;
+static uint32_t previous_adc_ms;
+static uint16_t latest_adc_code;
+static bool adc_result_valid = false;
+
 static void app_update_status_led(uint32_t current_ms)
 {
 	if (current_ms - previous_toggle_ms < APP_STATUS_LED_PERIOD_MS) return;
@@ -26,17 +32,40 @@ static void app_update_status_led(uint32_t current_ms)
 	led_toggle(led);
 }
 
-static uint16_t app_get_adc_reading()
+static void app_update_adc(uint32_t current_ms)
 {
-	uint16_t adc_code = 0;
-	ADC_Status_t adc_status = adc_read(ADC1, &adc_code);
-	if (adc_status != ADC_OK)
-	{
-		console_println(console, "[APP] ADC read failed!");
-		return 0;
-	}
+    if (!adc_waiting)
+    {
+        if (current_ms - previous_adc_ms < APP_STATUS_PRINT_PERIOD_MS) return;
 
-	return adc_code;
+        ADC_Status_t status = adc_start(ADC1);
+
+        if (status != ADC_OK)
+        {
+            console_println(console, "[APP] ADC start failed!");
+            return;
+        }
+
+        adc_waiting = true;
+        previous_adc_ms = current_ms;
+        return;
+    }
+
+    if (!adc_poll(ADC1)) return;
+
+    uint16_t adc_code;
+    ADC_Status_t status = adc_get_result(ADC1, &adc_code);
+
+    adc_waiting = false;
+
+    if (status != ADC_OK)
+    {
+        console_println(console, "[APP] ADC result failed!");
+        return;
+    }
+
+    latest_adc_code = adc_code;
+    adc_result_valid = true;
 }
 
 static float app_get_adc_voltage(uint16_t adc_code)
@@ -47,18 +76,21 @@ static float app_get_adc_voltage(uint16_t adc_code)
 
 static void app_update_print(uint32_t current_ms)
 {
-	if (current_ms - previous_print_ms < APP_STATUS_PRINT_PERIOD_MS) return;
-	previous_print_ms = current_ms;
+    (void)current_ms;
 
-	uint16_t adc_code = app_get_adc_reading();
-	float voltage = app_get_adc_voltage(adc_code);
+    if (!adc_result_valid)
+        return;
 
-	console_print(console, "[APP] ADC Code: ");
-	console_print_int(console, adc_code);
+    adc_result_valid = false;
 
-	console_print(console, " | Voltage: ");
-	console_print_float(console, voltage, 3);
-	console_println(console, " V");
+    float voltage = app_get_adc_voltage(latest_adc_code);
+
+    console_print(console, "[APP] ADC Code: ");
+    console_print_int(console, latest_adc_code);
+
+    console_print(console, " | Voltage: ");
+    console_print_float(console, voltage, 3);
+    console_println(console, " V");
 }
 
 void app_init(void)
@@ -71,6 +103,10 @@ void app_init(void)
 	uint32_t current_ms = systick_get_ms();
 	previous_toggle_ms = current_ms;
 	previous_print_ms = current_ms;
+	previous_adc_ms = current_ms;
+
+	adc_waiting = false;
+	adc_result_valid = false;
 }
 
 void app_update(void)
@@ -78,5 +114,6 @@ void app_update(void)
 	uint32_t current_ms = systick_get_ms();
 
 	app_update_status_led(current_ms);
+	app_update_adc(current_ms);
 	app_update_print(current_ms);
 }

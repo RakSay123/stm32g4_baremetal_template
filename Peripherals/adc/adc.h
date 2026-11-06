@@ -1,14 +1,17 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 #include "stm32g474xx.h"
 
 typedef enum {
 	ADC_OK = 0,
+	ADC_PENDING,
 	ADC_ERROR_NULL,
 	ADC_ERROR_INVALID_CONFIG,
 	ADC_ERROR_UNSUPPORTED,
 	ADC_ERROR_BUSY,
+	ADC_ERROR_OVERRUN,
 	ADC_ERROR
 } ADC_Status_t;
 
@@ -46,5 +49,11 @@ typedef struct {
 ADC_Status_t adc_init(const ADC_Config_t *cfg);
 
 ADC_Status_t adc_read(ADC_TypeDef *ADCx, uint16_t *result);
+
+ADC_Status_t adc_start(ADC_TypeDef *ADCx);
+
+bool adc_poll(ADC_TypeDef *ADCx);
+
+ADC_Status_t adc_get_result(ADC_TypeDef *ADCx, uint16_t *result);
 
 ADC_Status_t adc_disable(ADC_TypeDef *ADCx);
