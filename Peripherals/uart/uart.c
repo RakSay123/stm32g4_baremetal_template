@@ -1,5 +1,12 @@
 #include "uart.h"
 
+#define UART_TX_BUFFER_SIZE 512U
+
+static uint8_t tx_buffer[UART_TX_BUFFER_SIZE];
+static uint16_t tx_head = 0;
+static uint16_t tx_tail = 0;
+static USART_TypeDef *tx_instance = NULL;
+
 static UART_Status_t uart_enable_clock(USART_TypeDef *USARTx)
 {
 	if (USARTx == NULL) return UART_ERROR_NULL;
@@ -65,46 +72,121 @@ UART_Status_t uart_init(const UART_Config_t *cfg)
 	status = uart_enable(cfg);
 	if (status != UART_OK) return status;
 
+	tx_instance = cfg->USARTx;
+	tx_head = 0;
+	tx_tail = 0;
+
 	return status;
+}
+
+static uint16_t uart_next_index(uint16_t index)
+{
+    return (uint16_t)((index + 1U) % UART_TX_BUFFER_SIZE);
 }
 
 UART_Status_t uart_write_byte(USART_TypeDef *USARTx, uint8_t data)
 {
-	if (USARTx == NULL) return UART_ERROR_NULL;
+    if (USARTx == NULL) return UART_ERROR_NULL;
 
-	while (!(USARTx->ISR & USART_ISR_TXE_TXFNF));
+    if (USARTx != tx_instance) return UART_ERROR_INVALID_INSTANCE;
 
-	USARTx->TDR = data;
+    uint16_t next = uart_next_index(tx_head);
 
-	return UART_OK;
+    if (next == tx_tail) return UART_ERROR_BUFFER_FULL;
+
+    tx_buffer[tx_head] = data;
+    tx_head = next;
+
+    return UART_OK;
 }
 
 UART_Status_t uart_write_buffer(USART_TypeDef *USARTx, const uint8_t *buffer, size_t length)
 {
-	return UART_OK;
+    if (USARTx == NULL || buffer == NULL) return UART_ERROR_NULL;
+
+    if (USARTx != tx_instance) return UART_ERROR_INVALID_INSTANCE;
+
+    uint16_t used;
+
+    if (tx_head >= tx_tail) used = tx_head - tx_tail;
+    else used = UART_TX_BUFFER_SIZE - tx_tail + tx_head;
+
+    size_t free_space = UART_TX_BUFFER_SIZE - 1U - used;
+
+    if (length > free_space) return UART_ERROR_BUFFER_FULL;
+
+    for (size_t i = 0; i < length; i++)
+    {
+        tx_buffer[tx_head] = buffer[i];
+        tx_head = uart_next_index(tx_head);
+    }
+
+    return UART_OK;
 }
 
 UART_Status_t uart_write_string(USART_TypeDef *USARTx, const char *str)
 {
-	if (USARTx == NULL || str == NULL) return UART_ERROR_NULL;
+    if (USARTx == NULL || str == NULL) return UART_ERROR_NULL;
 
-	while (*str != '\0')
-	{
-		UART_Status_t status = uart_write_byte(USARTx, (uint8_t)*str);
-		if (status != UART_OK) return status;
+    size_t length = 0;
 
-		str++;
-	}
+    while (str[length] != '\0') length++;
 
-	return UART_OK;
+    return uart_write_buffer(USARTx, (const uint8_t *)str, length);
+}
+
+UART_Status_t uart_process_tx(USART_TypeDef *USARTx)
+{
+    if (USARTx == NULL) return UART_ERROR_NULL;
+    if (USARTx != tx_instance) return UART_ERROR_INVALID_INSTANCE;
+    if (tx_head == tx_tail) return UART_OK;
+    if (!(USARTx->ISR & USART_ISR_TXE_TXFNF)) return UART_OK;
+
+    USARTx->TDR = tx_buffer[tx_tail];
+    tx_tail = uart_next_index(tx_tail);
+
+    return UART_OK;
 }
 
 UART_Status_t uart_read_byte(USART_TypeDef *USARTx, uint8_t *data)
 {
-	return UART_OK;
+    if (USARTx == NULL || data == NULL) return UART_ERROR_NULL;
+
+    uint32_t isr = USARTx->ISR;
+
+    if (isr & USART_ISR_ORE)
+    {
+        USARTx->ICR = USART_ICR_ORECF;
+        return UART_ERROR_HARDWARE;
+    }
+
+    if (isr & (USART_ISR_FE | USART_ISR_NE | USART_ISR_PE))
+    {
+        (void)USARTx->RDR;
+
+        USARTx->ICR = USART_ICR_FECF | USART_ICR_NECF | USART_ICR_PECF;
+
+        return UART_ERROR_HARDWARE;
+    }
+
+    if (!(isr & USART_ISR_RXNE_RXFNE)) return UART_NO_DATA;
+
+    *data = (uint8_t)USARTx->RDR;
+
+    return UART_OK;
 }
 
 UART_Status_t uart_wait_tx_complete(USART_TypeDef *USARTx)
 {
-	return UART_OK;
+    if (USARTx == NULL)
+        return UART_ERROR_NULL;
+
+    if (USARTx != tx_instance)
+        return UART_ERROR_INVALID_INSTANCE;
+
+    while (tx_head != tx_tail) uart_process_tx(USARTx);
+
+    while (!(USARTx->ISR & USART_ISR_TC)) __NOP();
+
+    return UART_OK;
 }

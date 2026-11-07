@@ -11,13 +11,14 @@ typedef enum
     UART_ERROR_INVALID_INSTANCE,
     UART_ERROR_INVALID_CONFIG,
     UART_ERROR_TIMEOUT,
-    UART_ERROR_HARDWARE
+    UART_ERROR_HARDWARE,
+    UART_ERROR_BUFFER_FULL,
+    UART_NO_DATA
 } UART_Status_t;
 
 typedef struct
 {
     USART_TypeDef *USARTx;
-
     uint32_t peripheral_clock_hz;
     uint32_t baud_rate;
 
@@ -32,5 +33,7 @@ UART_Status_t uart_write_buffer(USART_TypeDef *USARTx, const uint8_t *buffer, si
 UART_Status_t uart_write_string(USART_TypeDef *USARTx, const char *str);
 
 UART_Status_t uart_read_byte(USART_TypeDef *USARTx, uint8_t *data);
+
+UART_Status_t uart_process_tx(USART_TypeDef *USARTx);
 
 UART_Status_t uart_wait_tx_complete(USART_TypeDef *USARTx);

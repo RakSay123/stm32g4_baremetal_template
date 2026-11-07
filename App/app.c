@@ -93,6 +93,45 @@ static void app_update_print(uint32_t current_ms)
     console_println(console, " V");
 }
 
+static void app_update_console_input(void)
+{
+    char character;
+
+    CONSOLE_Status_t status =
+        console_read_char(console, &character);
+
+    if (status == CONSOLE_NO_DATA)
+        return;
+
+    if (status != CONSOLE_OK)
+    {
+        console_println(console, "[APP] UART RX error!");
+        return;
+    }
+
+    switch (character)
+    {
+        case 'h':
+            console_println(console, "[APP] Hello from STM32!");
+            break;
+
+        case 'a':
+            console_println(console, "[APP] ADC reading requested.");
+
+            // We'll hook this into your ADC state machine later.
+            break;
+
+        case 'l':
+            led_toggle(led);
+            console_println(console, "[APP] LED toggled!");
+            break;
+
+        default:
+            console_println(console, "[APP] Unknown command.");
+            break;
+    }
+}
+
 void app_init(void)
 {
 	led = board_get_status_led();
@@ -111,9 +150,13 @@ void app_init(void)
 
 void app_update(void)
 {
-	uint32_t current_ms = systick_get_ms();
+    uint32_t current_ms = systick_get_ms();
 
-	app_update_status_led(current_ms);
-	app_update_adc(current_ms);
-	app_update_print(current_ms);
+    app_update_status_led(current_ms);
+    app_update_adc(current_ms);
+    app_update_print(current_ms);
+
+    app_update_console_input();
+
+    console_process(console);
 }

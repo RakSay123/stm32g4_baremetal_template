@@ -35,6 +35,15 @@ CONSOLE_Status_t console_init(CONSOLE_t *console)
 	return CONSOLE_OK;
 }
 
+CONSOLE_Status_t console_process(CONSOLE_t *console)
+{
+    if (console == NULL) return CONSOLE_ERROR_NULL;
+    if (console->uart_cfg == NULL || console->uart_cfg->USARTx == NULL) return CONSOLE_ERROR_INVALID_UART;
+    if (uart_process_tx(console->uart_cfg->USARTx) != UART_OK) return CONSOLE_ERROR_INVALID_UART;
+
+    return CONSOLE_OK;
+}
+
 CONSOLE_Status_t console_print(CONSOLE_t *console, const char *str)
 {
 	if (console == NULL || str == NULL) return CONSOLE_ERROR_NULL;
@@ -197,4 +206,45 @@ CONSOLE_Status_t console_print_float(CONSOLE_t *console, float value, uint8_t de
     buffer[index] = '\0';
 
     return console_print(console, buffer);
+}
+
+CONSOLE_Status_t console_read_char(CONSOLE_t *console, char *character)
+{
+    if (console == NULL || character == NULL)
+        return CONSOLE_ERROR_NULL;
+
+    if (console->uart_cfg == NULL ||
+        console->uart_cfg->USARTx == NULL)
+        return CONSOLE_ERROR_INVALID_UART;
+
+    uint8_t data;
+
+    UART_Status_t status =
+        uart_read_byte(console->uart_cfg->USARTx, &data);
+
+    if (status == UART_NO_DATA)
+        return CONSOLE_NO_DATA;
+
+    if (status != UART_OK)
+        return CONSOLE_ERROR_UART;
+
+    *character = (char)data;
+
+    return CONSOLE_OK;
+}
+
+CONSOLE_Status_t console_available(CONSOLE_t *console, bool *available)
+{
+    if (console == NULL || available == NULL)
+        return CONSOLE_ERROR_NULL;
+
+    if (console->uart_cfg == NULL ||
+        console->uart_cfg->USARTx == NULL)
+        return CONSOLE_ERROR_INVALID_UART;
+
+    USART_TypeDef *USARTx = console->uart_cfg->USARTx;
+
+    *available = (USARTx->ISR & USART_ISR_RXNE_RXFNE) != 0U;
+
+    return CONSOLE_OK;
 }
