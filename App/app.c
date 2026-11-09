@@ -1,162 +1,131 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
+#include <stddef.h>
 
 #include "app.h"
-
 #include "app_config.h"
 #include "device_instances.h"
 
 #include "systick/systick.h"
-#include "adc/adc.h"
-
-#include "console/console.h"
 #include "led/led.h"
+#include "dc_motor/dc_motor.h"
+#include "rotary_encoder/rotary_encoder.h"
+#include "motor_controller/motor_controller.h"
+#include "console/console.h"
 
 static LED_t *led;
+static DC_MOTOR_t *dc_motor;
+static ROTARY_ENCODER_t *encoder;
+static MOTOR_CONTROLLER_t *controller;
 static CONSOLE_t *console;
 
-static uint32_t previous_toggle_ms;
-static uint32_t previous_print_ms;
+static uint32_t previous_led_toggle_ms;
+static uint32_t previous_controller_update_ms;
+static uint32_t experiment_start_ms;
 
-static bool adc_waiting = false;
-static uint32_t previous_adc_ms;
-static uint16_t latest_adc_code;
-static bool adc_result_valid = false;
+static bool app_ready = false;
+static bool experiment_finished = false;
+
+static void app_stop_experiment(void)
+{
+    motor_controller_disable(controller);
+    dc_motor_brake(dc_motor);
+    led_off(led);
+
+    experiment_finished = true;
+}
 
 static void app_update_status_led(uint32_t current_ms)
 {
-	if (current_ms - previous_toggle_ms < APP_STATUS_LED_PERIOD_MS) return;
-	previous_toggle_ms = current_ms;
+    if (current_ms - previous_led_toggle_ms < APP_STATUS_LED_PERIOD_MS) return;
 
-	led_toggle(led);
+    previous_led_toggle_ms = current_ms;
+    led_toggle(led);
 }
 
-static void app_update_adc(uint32_t current_ms)
+static void app_log_controller(uint32_t current_ms)
 {
-    if (!adc_waiting)
-    {
-        if (current_ms - previous_adc_ms < APP_STATUS_PRINT_PERIOD_MS) return;
+    console_print_uint(console, current_ms - experiment_start_ms);
+    console_print(console, ",");
 
-        ADC_Status_t status = adc_start(ADC1);
+    console_print_float(console, controller->target_rpm, 2);
+    console_print(console, ",");
 
-        if (status != ADC_OK)
-        {
-            console_println(console, "[APP] ADC start failed!");
-            return;
-        }
+    console_print_float(console, controller->measured_rpm, 2);
+    console_print(console, ",");
 
-        adc_waiting = true;
-        previous_adc_ms = current_ms;
-        return;
-    }
+    console_print_float(console, controller->error, 2);
+    console_print(console, ",");
 
-    if (!adc_poll(ADC1)) return;
-
-    uint16_t adc_code;
-    ADC_Status_t status = adc_get_result(ADC1, &adc_code);
-
-    adc_waiting = false;
-
-    if (status != ADC_OK)
-    {
-        console_println(console, "[APP] ADC result failed!");
-        return;
-    }
-
-    latest_adc_code = adc_code;
-    adc_result_valid = true;
+    console_print_float(console, controller->control_output, 2);
+    console_println(console, "");
 }
 
-static float app_get_adc_voltage(uint16_t adc_code)
+static void app_controller_update(uint32_t current_ms)
 {
-	float voltage = ((float)adc_code / ADC_MAX_CODE) * ADC_VREF_VOLTAGE;
-	return voltage;
-}
+    uint32_t elapsed_ms = current_ms - previous_controller_update_ms;
 
-static void app_update_print(uint32_t current_ms)
-{
-    (void)current_ms;
+    if (elapsed_ms < APP_CONTROL_PERIOD_MS) return;
 
-    if (!adc_result_valid)
-        return;
+    previous_controller_update_ms = current_ms;
 
-    adc_result_valid = false;
+    float dt_seconds = (float)elapsed_ms / 1000.0f;
 
-    float voltage = app_get_adc_voltage(latest_adc_code);
+    if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK) app_stop_experiment();
 
-    console_print(console, "[APP] ADC Code: ");
-    console_print_int(console, latest_adc_code);
-
-    console_print(console, " | Voltage: ");
-    console_print_float(console, voltage, 3);
-    console_println(console, " V");
-}
-
-static void app_update_console_input(void)
-{
-    char character;
-
-    CONSOLE_Status_t status =
-        console_read_char(console, &character);
-
-    if (status == CONSOLE_NO_DATA)
-        return;
-
-    if (status != CONSOLE_OK)
-    {
-        console_println(console, "[APP] UART RX error!");
-        return;
-    }
-
-    switch (character)
-    {
-        case 'h':
-            console_println(console, "[APP] Hello from STM32!");
-            break;
-
-        case 'a':
-            console_println(console, "[APP] ADC reading requested.");
-
-            // We'll hook this into your ADC state machine later.
-            break;
-
-        case 'l':
-            led_toggle(led);
-            console_println(console, "[APP] LED toggled!");
-            break;
-
-        default:
-            console_println(console, "[APP] Unknown command.");
-            break;
-    }
+    app_log_controller(current_ms);
 }
 
 void app_init(void)
 {
-	led = board_get_status_led();
-	console = board_get_console();
+    app_ready = false;
+    experiment_finished = false;
 
-	console_println(console, "\r\n------------ ADC_TEST ------------");
+    led = board_get_status_led();
+    dc_motor = board_get_motor();
+    encoder = board_get_motor_encoder();
+    controller = board_get_motor_controller();
+    console = board_get_console();
 
-	uint32_t current_ms = systick_get_ms();
-	previous_toggle_ms = current_ms;
-	previous_print_ms = current_ms;
-	previous_adc_ms = current_ms;
+    if (led == NULL || dc_motor == NULL || encoder == NULL || controller == NULL || console == NULL) return;
 
-	adc_waiting = false;
-	adc_result_valid = false;
+    console_println(console, "\r\n------------ PID_TEST ------------");
+
+    motor_controller_disable(controller);
+    dc_motor_brake(dc_motor);
+
+    systick_delay_s(2);
+
+    if (rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK) return;
+
+    if (motor_controller_set_rpm(controller, APP_TARGET_RPM) != MOTOR_CONTROLLER_OK) return;
+
+    uint32_t current_ms = systick_get_ms();
+
+    previous_led_toggle_ms = current_ms;
+    previous_controller_update_ms = current_ms;
+    experiment_start_ms = current_ms;
+
+    encoder->previous_update_ms = current_ms;
+
+    console_println(console, "time_ms,target_rpm,measured_rpm,error,pwm");
+
+    app_ready = true;
+    motor_controller_enable(controller);
 }
 
 void app_update(void)
 {
+    if (!app_ready || experiment_finished) return;
+
     uint32_t current_ms = systick_get_ms();
 
+    if (current_ms - experiment_start_ms >= APP_EXPERIMENT_DURATION_MS)
+    {
+        app_stop_experiment();
+        return;
+    }
+
     app_update_status_led(current_ms);
-    app_update_adc(current_ms);
-    app_update_print(current_ms);
-
-    app_update_console_input();
-
-    console_process(console);
+    app_controller_update(current_ms);
 }
