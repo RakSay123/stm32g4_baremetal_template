@@ -9,8 +9,8 @@
 #define BOARD_TIM2_ARR                0xFFFFU
 #define BOARD_TIM2_CNT                0
 
-#define BOARD_TIM1_PSC				 (16U - 1U)
-#define BOARD_TIM1_ARR               (0xFFFFU - 1U)
+#define BOARD_TIM1_PSC				 (1U - 1U)
+#define BOARD_TIM1_ARR               (999U - 1U)
 #define BOARD_TIM1_CNT               0U
 
 

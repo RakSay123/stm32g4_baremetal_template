@@ -71,7 +71,11 @@ static void app_controller_update(uint32_t current_ms)
 
     float dt_seconds = (float)elapsed_ms / 1000.0f;
 
-    if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK) app_stop_experiment();
+    if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK)
+	{
+    	app_stop_experiment();
+    	return;
+	}
 
     app_log_controller(current_ms);
 }
@@ -116,16 +120,22 @@ void app_init(void)
 
 void app_update(void)
 {
-    if (!app_ready || experiment_finished) return;
+    if (!app_ready) return;
 
     uint32_t current_ms = systick_get_ms();
 
-    if (current_ms - experiment_start_ms >= APP_EXPERIMENT_DURATION_MS)
+    if (!experiment_finished)
     {
-        app_stop_experiment();
-        return;
+    	if (current_ms - experiment_start_ms >= APP_EXPERIMENT_DURATION_MS)
+		{
+			app_stop_experiment();
+		}
+    	else
+    	{
+    	    app_update_status_led(current_ms);
+    	    app_controller_update(current_ms);
+    	}
     }
 
-    app_update_status_led(current_ms);
-    app_controller_update(current_ms);
+    console_process(console);
 }

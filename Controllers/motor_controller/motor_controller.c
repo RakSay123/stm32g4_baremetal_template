@@ -1,5 +1,4 @@
 #include "motor_controller.h"
-#include "uart/uart.h"
 
 MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller, float kp, float ki, float kd, float output_min, float output_max)
 {
@@ -40,23 +39,11 @@ MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller
 	float control_output;
 	if (pid_update(&controller->pid, &control_output, controller->target_rpm, measured_rpm, dt_seconds) != PID_OK) return MOTOR_CONTROLLER_ERR;
 
-	dc_motor_set_speed_and_direction(controller->motor, MOTOR_DRIVER_FORWARD, control_output);
+	if (dc_motor_set_speed_and_direction(controller->motor, MOTOR_DRIVER_FORWARD, control_output) != DC_MOTOR_OK) return MOTOR_CONTROLLER_ERR;
 
 	controller->measured_rpm = measured_rpm;
 	controller->error = controller->target_rpm - measured_rpm;
 	controller->control_output = control_output;
-
-	uart_write_int(USART2, current_ms);
-	uart_write_str(USART2, ",");
-	uart_write_float(USART2, controller->target_rpm);
-	uart_write_str(USART2, ",");
-	uart_write_float(USART2, controller->measured_rpm);
-	uart_write_str(USART2, ",");
-	uart_write_float(USART2, controller->error);
-	uart_write_str(USART2, ",");
-	uart_write_float(USART2, controller->control_output);
-	uart_write_line(USART2, "");
-
 
 	return MOTOR_CONTROLLER_OK;
 }

@@ -188,6 +188,11 @@ ROTARY_ENCODER_Status_t rotary_encoder_set_count_zero(ROTARY_ENCODER_t *encoder)
 	encoder->radians_per_second = 0U;
 	encoder->linear_velocity_mm_per_second = 0U;
 
+	encoder->previous_velocity_count = 0;
+	encoder->velocity_delta_count = 0;
+	encoder->sample_period_ms = 0;
+	encoder->consecutive_zero_samples = 0;
+
 	encoder->motion = ROTARY_ENCODER_STOPPED;
 
 	return ROTARY_ENCODER_OK;

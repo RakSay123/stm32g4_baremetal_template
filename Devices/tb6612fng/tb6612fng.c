@@ -93,24 +93,37 @@ TB6612FNG_Status_t tb6612fng_init(TB6612FNG_t *tb6612fng)
 		.alternate = tb6612fng->channel_b->pwm_af
 	};
 
-	gpio_init(&stby);
+	GPIO_Status_t status = GPIO_OK;
 
-	gpio_init(&ain1);
+	status = gpio_init(&stby);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
+
+	status = gpio_init(&ain1);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
+
 	gpio_init(&ain2);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
 
-	gpio_init(&bin1);
-	gpio_init(&bin2);
+	status = gpio_init(&bin1);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
 
-	gpio_init(&pwma);
-	gpio_init(&pwmb);
+	status = gpio_init(&bin2);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
+
+	status = gpio_init(&pwma);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
+
+	status = gpio_init(&pwmb);
+	if (status != GPIO_OK) return TB6612FNG_ERR;
 
 	tb6612fng_disable(tb6612fng);
 
 	tb6612fng_coast(tb6612fng, TB6612FNG_CHA);
 	tb6612fng_coast(tb6612fng, TB6612FNG_CHB);
 
-	timer_pwm_init(tb6612fng->channel_a->pwm);
-	timer_pwm_init(tb6612fng->channel_b->pwm);
+	if (timer_pwm_init(tb6612fng->channel_a->pwm) != TIM_OK) return TB6612FNG_ERR;
+
+	if (timer_pwm_init(tb6612fng->channel_b->pwm) != TIM_OK) return TB6612FNG_ERR;
 
 	tb6612fng_set_duty_cycle(tb6612fng, TB6612FNG_CHA, 0);
 	tb6612fng_set_duty_cycle(tb6612fng, TB6612FNG_CHB, 0);

@@ -1,3 +1,4 @@
+#include "board_config.h"
 #include "device_instances.h"
 #include "tb6612fng/tb6612fng_motor_driver.h"
 
@@ -35,7 +36,7 @@ static ROTARY_ENCODER_t rotary_encoder_cfg = {
 	.radius_mm = 1.0f,
 
 	.pulses_per_revolution = 210U,
-	.counts_per_revolution = 420U,
+	.counts_per_revolution = 840U,
 
 	.raw_count = 0U,
 	.previous_raw_count = 0U,
@@ -128,7 +129,7 @@ static TB6612FNG_Channel_Config_t tb6612fng_chb = {
 	.in2 = &bin2_pin,
 
 	.pwm_pin = &pwmb_pin,
-	.pwm_af = GPIO_AF1,
+	.pwm_af = GPIO_AF6,
 	.pwm = &pwmb_cfg
 };
 
@@ -164,8 +165,8 @@ static const GPIO_AF_Pin_t USART2_RX = {
 
 static const UART_Config_t uart_cfg = {
 	.USARTx = USART2,
-	.baud_rate = BAUD_RATE,
-	.peripheral_clock_hz = BOARD_FCLK_HZ
+	.peripheral_clock_hz = BOARD_FCLK_HZ,
+	.baud_rate = BOARD_DEBUG_UART_BAUD,
 };
 
 static CONSOLE_t console = {
