@@ -1,0 +1,27 @@
+{
+  "port": "COM11",
+  "baud": 115200,
+  "speeds": [
+    275
+  ],
+  "repeats": 1,
+  "duration_ms": 4000,
+  "kp": 2.1541,
+  "ki": 7.109,
+  "kd": 0.0056,
+  "cooldown_s": 20,
+  "rest_every": 10,
+  "rest_seconds": 60,
+  "checkin_minutes": 5,
+  "tolerance": 2.5,
+  "arrival_ms": 500,
+  "hold_ms": 1000,
+  "deadline_ms": 1500,
+  "steady_tail_s": 1,
+  "max_overshoot": 10,
+  "max_tail_mae": 4.5,
+  "max_tail_std": 4.5,
+  "output": "analysis\\pid_rpm_reliability",
+  "dry_run": false,
+  "extended_range_confirmed": true
+}

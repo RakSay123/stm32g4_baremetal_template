@@ -1,0 +1,2 @@
+name,passed,pass_time_ms,hold_start_ms,first_entry_ms,rise_90_ms,settle_ms,peak_rpm,overshoot_pct,steady_rpm,steady_bias_rpm,steady_mae_rpm,mean_step_ms,max_step_ms,target_rpm,lower_rpm,upper_rpm,n_samples
+kp_7_ki_8_kd_0_1.csv,False,,,1300.0,56.323126414869535,7520.0,196.43,9.127777777777782,180.03589403973507,0.03589403973506933,2.733245033112581,20.0,20.0,180.0,171.0,189.0,499

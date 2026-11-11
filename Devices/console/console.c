@@ -35,6 +35,15 @@ CONSOLE_Status_t console_init(CONSOLE_t *console)
 	return CONSOLE_OK;
 }
 
+CONSOLE_Status_t console_set_echo(CONSOLE_t *console, bool enabled)
+{
+    if (console == NULL) return CONSOLE_ERROR_NULL;
+
+    console->echo_enabled = enabled;
+
+    return CONSOLE_OK;
+}
+
 CONSOLE_Status_t console_process(CONSOLE_t *console)
 {
     if (console == NULL) return CONSOLE_ERROR_NULL;
@@ -210,25 +219,35 @@ CONSOLE_Status_t console_print_float(CONSOLE_t *console, float value, uint8_t de
 
 CONSOLE_Status_t console_read_char(CONSOLE_t *console, char *character)
 {
-    if (console == NULL || character == NULL)
-        return CONSOLE_ERROR_NULL;
-
-    if (console->uart_cfg == NULL ||
-        console->uart_cfg->USARTx == NULL)
-        return CONSOLE_ERROR_INVALID_UART;
+    if (console == NULL || character == NULL) return CONSOLE_ERROR_NULL;
+    if (console->uart_cfg == NULL || console->uart_cfg->USARTx == NULL) return CONSOLE_ERROR_INVALID_UART;
 
     uint8_t data;
 
-    UART_Status_t status =
-        uart_read_byte(console->uart_cfg->USARTx, &data);
+    UART_Status_t status = uart_read_byte(console->uart_cfg->USARTx, &data);
 
-    if (status == UART_NO_DATA)
-        return CONSOLE_NO_DATA;
+    if (status == UART_NO_DATA) return CONSOLE_NO_DATA;
 
-    if (status != UART_OK)
-        return CONSOLE_ERROR_UART;
+    if (status != UART_OK) return CONSOLE_ERROR_UART;
 
     *character = (char)data;
+
+    if (console->echo_enabled)
+    {
+        if (data == '\r' || data == '\n')
+        {
+            console_print(console, "\r\n");
+        }
+        else if (data == '\b' || data == 127U)
+        {
+            console_print(console, "\b \b");
+        }
+        else if (data >= 32U && data <= 126U)
+        {
+            char echo[2] = {(char)data, '\0'};
+            console_print(console, echo);
+        }
+    }
 
     return CONSOLE_OK;
 }

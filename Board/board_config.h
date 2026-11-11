@@ -10,10 +10,10 @@
 #define BOARD_TIM2_CNT                0
 
 #define BOARD_TIM1_PSC				 (1U - 1U)
-#define BOARD_TIM1_ARR               (999U - 1U)
+#define BOARD_TIM1_ARR               (1000U - 1U)
 #define BOARD_TIM1_CNT               0U
 
 
 #define KP 							  7.0f
 #define KI 							  8.0f
-#define KD 						  	  0.0f
+#define KD 						  	  0.1f

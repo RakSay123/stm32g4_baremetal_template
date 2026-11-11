@@ -19,9 +19,13 @@ typedef struct {
 	const UART_Config_t *uart_cfg;
 	const GPIO_AF_Pin_t *tx;
 	const GPIO_AF_Pin_t *rx;
+
+	bool echo_enabled;
 } CONSOLE_t;
 
 CONSOLE_Status_t console_init(CONSOLE_t *console);
+
+CONSOLE_Status_t console_set_echo(CONSOLE_t *console, bool enabled);
 
 CONSOLE_Status_t console_process(CONSOLE_t *console);
 

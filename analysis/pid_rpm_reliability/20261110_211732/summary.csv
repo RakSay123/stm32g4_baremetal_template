@@ -1,0 +1,2 @@
+rpm,repeat,status,pass,first_entry_ms,hold_start_ms,pass_time_ms,rise90_ms,settle_ms,peak_rpm,overshoot_pct,tail_mae_rpm,tail_mean_rpm,tail_std_rpm,pwm_peak,pwm_tail_mean,samples,csv,error
+50,1,COMPLETE,False,80.0,,,58.99894994749737,3880.0,53.57,7.140000000000001,1.05,49.65,1.9042058712229624,256.0,167.0,199,csv/rpm_050_repeat_1.csv,
