@@ -30,7 +30,7 @@ MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controlle
     if (controller->feedforward_enabled)
     {
         float ignored;
-        if (motor_feedforward_get_pwm(target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+        if (motor_feedforward_get_pwm(controller->ff_lut, target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
     }
     controller->target_rpm = target_rpm;
     return MOTOR_CONTROLLER_OK;
@@ -45,10 +45,12 @@ MOTOR_CONTROLLER_Status_t motor_controller_set_feedforward(MOTOR_CONTROLLER_t *c
 {
     if (controller == NULL) return MOTOR_CONTROLLER_ERR;
 
+    if (enabled && controller->ff_lut == NULL) return MOTOR_CONTROLLER_ERR;
+
     if (enabled && controller->target_rpm > 0.0f)
     {
         float ignored;
-        if (motor_feedforward_get_pwm(controller->target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+        if (motor_feedforward_get_pwm(controller->ff_lut, controller->target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
     }
     if (controller->feedforward_enabled != enabled)
     {
@@ -81,7 +83,7 @@ MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller
     }
 
     float ff_pwm = 0.0f;
-    if (controller->feedforward_enabled && motor_feedforward_get_pwm(controller->target_rpm, &ff_pwm) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+    if (controller->feedforward_enabled && motor_feedforward_get_pwm(controller->ff_lut, controller->target_rpm, &ff_pwm) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
 
     float combined_pwm = 0.0f;
     if (pid_update_with_bias(&controller->pid, &combined_pwm, controller->target_rpm, measured_rpm, dt_seconds, ff_pwm) != PID_OK) return MOTOR_CONTROLLER_ERR;

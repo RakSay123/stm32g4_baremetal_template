@@ -12,8 +12,6 @@ LED_t* board_get_status_led(void);
 
 ROTARY_ENCODER_t* board_get_motor_encoder(void);
 
-ROTARY_ENCODER_t* board_get_motor2_encoder(void);
-
 TB6612FNG_t* board_get_tb6612fng(void);
 
 MOTOR_DRIVER_t* board_get_motor_driver(void);
@@ -21,9 +19,5 @@ MOTOR_DRIVER_t* board_get_motor_driver(void);
 DC_MOTOR_t* board_get_motor(void);
 
 MOTOR_CONTROLLER_t* board_get_motor_controller(void);
-
-DC_MOTOR_t* board_get_motor2(void);
-
-MOTOR_CONTROLLER_t* board_get_motor2_controller(void);
 
 CONSOLE_t* board_get_console(void);

@@ -147,7 +147,7 @@ def write_header(path, points):
     with path.open('w', encoding='utf-8') as f:
         f.write('/* PROVISIONAL open-loop feedforward LUT; validate before use. */\n')
         f.write('#pragma once\n#include <stdint.h>\n\n')
-        f.write('typedef struct { float rpm; uint16_t pwm; } MotorFFPoint;\n')
+        f.write('#include "motor_feedforward/motor_feedforward.h"\n\n')
         f.write(f'static const MotorFFPoint motor_ff_lut[{len(points)}] = {{\n')
         for point in points:
             f.write(f'    {{ {point["rpm"]:.2f}f, {point["pwm"]} }},\n')

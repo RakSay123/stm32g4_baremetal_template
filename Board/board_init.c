@@ -5,6 +5,7 @@
 
 #include "board_config.h"
 #include "device_instances.h"
+#include "dual_motor.h"
 
 
 #include "gpio/gpio.h"
@@ -77,6 +78,7 @@ BOARD_Status_t board_init(void)
 	if (tb6612fng_init(tb6612fng) != TB6612FNG_OK) return BOARD_STATUS_TB6612FNG_ERROR;
 	if (tb6612fng_motor_driver_bind(motor_driver, tb6612fng) != MOTOR_DRIVER_OK) return BOARD_STATUS_MOTOR_DRIVER_ERROR;
 	if (motor_controller_init(motor_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_b->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
+	if (dual_motor_init() != DUAL_MOTOR_OK) return BOARD_STATUS_MOTOR_DRIVER_ERROR;
 	if (motor_controller_init(motor2_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_a->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
 	if (console_init(console) != CONSOLE_OK) return BOARD_STATUS_CONSOLE_ERROR;
 

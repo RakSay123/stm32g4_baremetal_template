@@ -3,6 +3,7 @@
 #include "dc_motor/dc_motor.h"
 #include "rotary_encoder/rotary_encoder.h"
 #include "pid/pid.h"
+#include "motor_feedforward/motor_feedforward.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,6 +16,7 @@ typedef struct {
     DC_MOTOR_t *motor;
     ROTARY_ENCODER_t *encoder;
     PID_t pid;
+    const MOTOR_FF_LUT_t *ff_lut;  /* This motor's own feedforward LUT (set in Board). */
 
     float target_rpm;
     float measured_rpm;

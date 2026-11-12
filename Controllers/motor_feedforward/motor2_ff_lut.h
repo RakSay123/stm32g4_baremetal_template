@@ -1,0 +1,50 @@
+/* PLACEHOLDER: copy of motor 1's LUT (motor_ff_lut.h).
+ * Motor 2 has NOT been characterized yet. Re-run analysis/motor_ff_characterize.py
+ * on motor 2 and replace this whole file with its generated motor_ff_lut.h.
+ */
+/* PROVISIONAL open-loop feedforward LUT; validate before use. */
+#pragma once
+#include <stdint.h>
+#include "motor_feedforward/motor_feedforward.h"
+
+static const MotorFFPoint motor_ff_lut[38] = {
+    { 8.57f, 75 },
+    { 29.14f, 100 },
+    { 41.62f, 125 },
+    { 53.90f, 150 },
+    { 66.08f, 175 },
+    { 77.90f, 200 },
+    { 90.00f, 225 },
+    { 102.05f, 250 },
+    { 113.79f, 275 },
+    { 125.83f, 300 },
+    { 137.88f, 325 },
+    { 149.57f, 350 },
+    { 161.57f, 375 },
+    { 173.50f, 400 },
+    { 185.24f, 425 },
+    { 197.88f, 450 },
+    { 210.07f, 475 },
+    { 222.64f, 500 },
+    { 235.29f, 525 },
+    { 247.91f, 550 },
+    { 260.71f, 575 },
+    { 273.12f, 600 },
+    { 286.00f, 625 },
+    { 299.36f, 650 },
+    { 312.91f, 675 },
+    { 324.90f, 700 },
+    { 338.69f, 725 },
+    { 351.76f, 750 },
+    { 362.14f, 775 },
+    { 374.43f, 800 },
+    { 387.95f, 825 },
+    { 402.02f, 850 },
+    { 414.62f, 875 },
+    { 426.78f, 900 },
+    { 438.07f, 925 },
+    { 451.24f, 950 },
+    { 464.05f, 975 },
+    { 475.83f, 999 },
+};
+static const uint32_t motor_ff_lut_count = 38U;

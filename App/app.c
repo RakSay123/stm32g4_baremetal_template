@@ -9,6 +9,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "device_instances.h"
+#include "dual_motor.h"
 
 #include "systick/systick.h"
 #include "led/led.h"

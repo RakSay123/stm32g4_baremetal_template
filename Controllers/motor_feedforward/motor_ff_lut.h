@@ -1,8 +1,8 @@
 /* PROVISIONAL open-loop feedforward LUT; validate before use. */
 #pragma once
 #include <stdint.h>
+#include "motor_feedforward/motor_feedforward.h"
 
-typedef struct { float rpm; uint16_t pwm; } MotorFFPoint;
 static const MotorFFPoint motor_ff_lut[38] = {
     { 8.57f, 75 },
     { 29.14f, 100 },
