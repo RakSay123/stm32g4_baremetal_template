@@ -101,7 +101,7 @@ TB6612FNG_Status_t tb6612fng_init(TB6612FNG_t *tb6612fng)
 	status = gpio_init(&ain1);
 	if (status != GPIO_OK) return TB6612FNG_ERR;
 
-	gpio_init(&ain2);
+	status = gpio_init(&ain2);
 	if (status != GPIO_OK) return TB6612FNG_ERR;
 
 	status = gpio_init(&bin1);

@@ -26,20 +26,16 @@ typedef struct {
     bool enabled;
 } MOTOR_CONTROLLER_t;
 
-MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller,
-                                                 float kp, float ki, float kd,
-                                                 float output_min, float output_max);
-MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controller,
-                                                    float target_rpm);
-MOTOR_CONTROLLER_Status_t motor_controller_set_rev_per_sec(MOTOR_CONTROLLER_t *controller,
-                                                            float target_rev_per_sec);
-MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller,
-                                                   uint32_t current_ms,
-                                                   float dt_seconds);
-/* Changing modes resets PID history to avoid carrying integrator bias
- * from PID-only into PID+FF or vice versa.
- */
-MOTOR_CONTROLLER_Status_t motor_controller_set_feedforward(MOTOR_CONTROLLER_t *controller,
-                                                            bool enabled);
+MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller, float kp, float ki, float kd, float output_min, float output_max);
+
+MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controller, float target_rpm);
+
+MOTOR_CONTROLLER_Status_t motor_controller_set_rev_per_sec(MOTOR_CONTROLLER_t *controller, float target_rev_per_sec);
+
+MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller, uint32_t current_ms, float dt_seconds);
+
+MOTOR_CONTROLLER_Status_t motor_controller_set_feedforward(MOTOR_CONTROLLER_t *controller, bool enabled);
+
 MOTOR_CONTROLLER_Status_t motor_controller_disable(MOTOR_CONTROLLER_t *controller);
+
 MOTOR_CONTROLLER_Status_t motor_controller_enable(MOTOR_CONTROLLER_t *controller);

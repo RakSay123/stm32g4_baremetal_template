@@ -63,8 +63,7 @@ static bool app_append_fixed_2(char *buffer, size_t capacity, size_t *used, floa
     unsigned long whole = (unsigned long)(scaled / 100U);
     unsigned long fraction = (unsigned long)(scaled % 100U);
 
-    int written = snprintf(buffer + *used, capacity - *used,
-                           "%s%lu.%02lu", negative ? "-" : "", whole, fraction);
+    int written = snprintf(buffer + *used, capacity - *used, "%s%lu.%02lu", negative ? "-" : "", whole, fraction);
     if (written < 0 || (size_t)written >= capacity - *used) return false;
     *used += (size_t)written;
     return true;
@@ -73,8 +72,7 @@ static bool app_append_fixed_2(char *buffer, size_t capacity, size_t *used, floa
 static bool app_log_controller(uint32_t current_ms)
 {
     char line[112];
-    int written = snprintf(line, sizeof(line), "%lu,",
-                           (unsigned long)(current_ms - experiment_start_ms));
+    int written = snprintf(line, sizeof(line), "%lu,", (unsigned long)(current_ms - experiment_start_ms));
     if (written < 0 || (size_t)written >= sizeof(line)) return false;
     size_t used = (size_t)written;
 
@@ -85,7 +83,8 @@ static bool app_log_controller(uint32_t current_ms)
         controller->control_output
     };
 
-    for (size_t i = 0U; i < 4U; ++i) {
+    for (size_t i = 0U; i < 4U; ++i)
+    {
         if (!app_append_fixed_2(line, sizeof(line), &used, fields[i])) return false;
         if (used + 2U >= sizeof(line)) return false;
         line[used++] = (i == 3U) ? '\r' : ',';
@@ -102,7 +101,8 @@ static void app_stop_experiment(const char *reason)
     dc_motor_brake(dc_motor);
     led_off(led);
 
-    if (app_state == APP_RUNNING) {
+    if (app_state == APP_RUNNING)
+    {
         app_state = APP_CLOSING;
         pending_end_reason = reason;
         previous_stop_ms = systick_get_ms();
@@ -140,15 +140,18 @@ static void app_update_motor(uint32_t current_ms)
     previous_controller_update_ms = current_ms;
     float dt_seconds = (float)elapsed_ms / 1000.0f;
 
-    if (app_mode == APP_MODE_PID) {
-        if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK) {
+    if (app_mode == APP_MODE_PID)
+    {
+        if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK)
+        {
             app_stop_experiment("ERROR MOTOR");
             return;
         }
-    } else {
-        // Open-loop mode: PID is DISABLED. Only update encoder measurements.
-        if (rotary_encoder_update_distance(encoder) != ROTARY_ENCODER_OK ||
-            rotary_encoder_update_velocity(encoder, current_ms) != ROTARY_ENCODER_OK) {
+    }
+    else
+    {
+        if (rotary_encoder_update_distance(encoder) != ROTARY_ENCODER_OK || rotary_encoder_update_velocity(encoder, current_ms) != ROTARY_ENCODER_OK)
+        {
             app_stop_experiment("ERROR ENCODER");
             return;
         }
@@ -158,9 +161,7 @@ static void app_update_motor(uint32_t current_ms)
         controller->control_output = (float)experiment_pwm;
     }
 
-    if (!app_log_controller(current_ms)) {
-        app_stop_experiment("ERROR LOG");
-    }
+    if (!app_log_controller(current_ms)) app_stop_experiment("ERROR LOG");
 }
 
 static bool app_parse_float(const char *token, float *result)
@@ -217,17 +218,15 @@ static void app_print_help(void)
 static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
 {
     uint32_t now = systick_get_ms();
-    if (have_previous_stop &&
-        (uint32_t)(now - previous_stop_ms) < APP_RESTART_COOLDOWN_MS) {
+    if (have_previous_stop && (uint32_t)(now - previous_stop_ms) < APP_RESTART_COOLDOWN_MS)
+    {
         console_println(console, "ERR COOLDOWN");
         return false;
     }
 
     motor_controller_disable(controller);
-    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK ||
-        pid_reset(&controller->pid) != PID_OK ||
-        rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK ||
-        motor_controller_set_rpm(controller, target_rpm) != MOTOR_CONTROLLER_OK) {
+    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK || pid_reset(&controller->pid) != PID_OK || rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK || motor_controller_set_rpm(controller, target_rpm) != MOTOR_CONTROLLER_OK)
+    {
         console_println(console, "ERR START");
         return false;
     }
@@ -237,7 +236,6 @@ static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
     controller->error = target_rpm;
     controller->control_output = 0.0f;
 
-    // Consistent epoch for velocity estimation and the CSV timestamps.
     encoder->previous_update_ms = now;
     previous_controller_update_ms = now;
     previous_led_toggle_ms = now;
@@ -255,25 +253,18 @@ static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
     return true;
 }
 
-// Open-loop characterization command. PWM is in the same raw units (0..999)
-// as controller->control_output and dc_motor_set_speed_and_direction().
-// A RUN experiment remains completely separate from this mode.
 static bool app_start_pwm_experiment(uint16_t pwm, uint32_t duration_ms)
 {
     uint32_t now = systick_get_ms();
-    if (have_previous_stop &&
-        (uint32_t)(now - previous_stop_ms) < APP_RESTART_COOLDOWN_MS) {
+    if (have_previous_stop && (uint32_t)(now - previous_stop_ms) < APP_RESTART_COOLDOWN_MS)
+    {
         console_println(console, "ERR COOLDOWN");
         return false;
     }
 
-    // Do NOT call motor_controller_update() during PWM testing.
-    // Reset PID and encoder to make transitions between modes deterministic.
     motor_controller_disable(controller);
-    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK ||
-        pid_reset(&controller->pid) != PID_OK ||
-        rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK ||
-        motor_controller_set_rpm(controller, 0.0f) != MOTOR_CONTROLLER_OK) {
+    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK || pid_reset(&controller->pid) != PID_OK || rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK || motor_controller_set_rpm(controller, 0.0f) != MOTOR_CONTROLLER_OK)
+    {
         dc_motor_brake(dc_motor);
         console_println(console, "ERR START");
         return false;
@@ -292,13 +283,11 @@ static bool app_start_pwm_experiment(uint16_t pwm, uint32_t duration_ms)
     experiment_duration_ms = duration_ms;
     deferred_busy = false;
 
-    // Begin the bounded run before issuing the motor command, so the
-    // application timer never starts *after* the motor is powered.
     app_state = APP_RUNNING;
-    if (dc_motor_set_speed_and_direction(dc_motor, MOTOR_DRIVER_FORWARD,
-                                          (float)pwm) != DC_MOTOR_OK) {
+    if (dc_motor_set_speed_and_direction(dc_motor, MOTOR_DRIVER_FORWARD, (float)pwm) != DC_MOTOR_OK)
+    {
         app_stop_experiment("ERROR MOTOR");
-        // Nothing is streamed yet; return to idle safely instead.
+
         app_state = APP_IDLE;
         pending_end_reason = NULL;
         console_println(console, "ERR START");
@@ -316,43 +305,46 @@ static void app_handle_command(char *line)
     char *cmd = strtok(line, " \t");
     if (cmd == NULL) return;
 
-    if (app_state != APP_IDLE) {
-        if (app_state == APP_RUNNING && strcmp(cmd, "STOP") == 0 && strtok(NULL, " \t") == NULL) {
-            app_stop_experiment("STOP");
-        } else {
-            deferred_busy = true;
-        }
+    if (app_state != APP_IDLE)
+    {
+        if (app_state == APP_RUNNING && strcmp(cmd, "STOP") == 0 && strtok(NULL, " \t") == NULL) app_stop_experiment("STOP");
+        else deferred_busy = true;
         return;
     }
 
-    if (strcmp(cmd, "HELP") == 0 && strtok(NULL, " \t") == NULL) {
+    if (strcmp(cmd, "HELP") == 0 && strtok(NULL, " \t") == NULL)
+    {
         app_print_help();
         return;
     }
 
-    if (strcmp(cmd, "STATUS") == 0 && strtok(NULL, " \t") == NULL) {
+    if (strcmp(cmd, "STATUS") == 0 && strtok(NULL, " \t") == NULL)
+    {
         app_print_status();
         return;
     }
 
-    if (strcmp(cmd, "STOP") == 0 && strtok(NULL, " \t") == NULL) {
+    if (strcmp(cmd, "STOP") == 0 && strtok(NULL, " \t") == NULL)
+    {
         motor_controller_disable(controller);
         dc_motor_brake(dc_motor);
         console_println(console, "OK STOP IDLE");
         return;
     }
 
-    if (strcmp(cmd, "FF") == 0) {
+    if (strcmp(cmd, "FF") == 0)
+    {
         char *mode = strtok(NULL, " \t");
         char *extra = strtok(NULL, " \t");
-        if (mode == NULL || extra != NULL ||
-            (strcmp(mode, "ON") != 0 && strcmp(mode, "OFF") != 0)) {
+        if (mode == NULL || extra != NULL || (strcmp(mode, "ON") != 0 && strcmp(mode, "OFF") != 0))
+        {
             console_println(console, "ERR FF: expected FF ON or FF OFF");
             return;
         }
 
         bool enabled = strcmp(mode, "ON") == 0;
-        if (motor_controller_set_feedforward(controller, enabled) != MOTOR_CONTROLLER_OK) {
+        if (motor_controller_set_feedforward(controller, enabled) != MOTOR_CONTROLLER_OK)
+        {
             console_println(console, "ERR FF: requested target outside characterized RPM range");
             return;
         }
@@ -360,23 +352,20 @@ static void app_handle_command(char *line)
         return;
     }
 
-    if (strcmp(cmd, "PID") == 0) {
+    if (strcmp(cmd, "PID") == 0)
+    {
         char *arg_kp = strtok(NULL, " \t");
         char *arg_ki = strtok(NULL, " \t");
         char *arg_kd = strtok(NULL, " \t");
         char *extra = strtok(NULL, " \t");
         float kp, ki, kd;
 
-        if (extra != NULL || !app_parse_float(arg_kp, &kp) ||
-            !app_parse_float(arg_ki, &ki) || !app_parse_float(arg_kd, &kd) ||
-            kp < 0.0f || kp > APP_MAX_KP ||
-            ki < 0.0f || ki > APP_MAX_KI ||
-            kd < 0.0f || kd > APP_MAX_KD) {
+        if (extra != NULL || !app_parse_float(arg_kp, &kp) || !app_parse_float(arg_ki, &ki) || !app_parse_float(arg_kd, &kd) || kp < 0.0f || kp > APP_MAX_KP || ki < 0.0f || ki > APP_MAX_KI || kd < 0.0f || kd > APP_MAX_KD)
+        {
             console_println(console, "ERR PID: expected PID <kp> <ki> <kd> (check bounds)");
             return;
         }
 
-        // Gains updated atomically after validating the complete command.
         controller->pid.kp = kp;
         controller->pid.ki = ki;
         controller->pid.kd = kd;
@@ -385,20 +374,16 @@ static void app_handle_command(char *line)
         return;
     }
 
-    if (strcmp(cmd, "RUN") == 0) {
+    if (strcmp(cmd, "RUN") == 0)
+    {
         char *arg_rpm = strtok(NULL, " \t");
         char *arg_ms = strtok(NULL, " \t");
         char *extra = strtok(NULL, " \t");
         float rpm = experiment_target_rpm;
         uint32_t duration_ms = experiment_duration_ms;
 
-        if ((arg_rpm == NULL && arg_ms != NULL) ||
-            (arg_rpm != NULL && arg_ms == NULL) || extra != NULL ||
-            (arg_rpm != NULL && !app_parse_float(arg_rpm, &rpm)) ||
-            (arg_ms != NULL && !app_parse_uint(arg_ms, &duration_ms)) ||
-            rpm < APP_MIN_TARGET_RPM || rpm > APP_MAX_TARGET_RPM ||
-            duration_ms < APP_MIN_EXPERIMENT_MS ||
-            duration_ms > APP_MAX_EXPERIMENT_MS) {
+        if ((arg_rpm == NULL && arg_ms != NULL) || (arg_rpm != NULL && arg_ms == NULL) || extra != NULL || (arg_rpm != NULL && !app_parse_float(arg_rpm, &rpm)) || (arg_ms != NULL && !app_parse_uint(arg_ms, &duration_ms)) || rpm < APP_MIN_TARGET_RPM || rpm > APP_MAX_TARGET_RPM || duration_ms < APP_MIN_EXPERIMENT_MS || duration_ms > APP_MAX_EXPERIMENT_MS)
+        {
             console_println(console, "ERR RUN: expected RUN <rpm> <ms> (check bounds)");
             return;
         }
@@ -406,17 +391,16 @@ static void app_handle_command(char *line)
         return;
     }
 
-    if (strcmp(cmd, "PWM") == 0) {
+    if (strcmp(cmd, "PWM") == 0)
+    {
         char *arg_pwm = strtok(NULL, " \t");
         char *arg_ms = strtok(NULL, " \t");
         char *extra = strtok(NULL, " \t");
         uint32_t pwm;
         uint32_t duration_ms;
 
-        if (extra != NULL || !app_parse_uint(arg_pwm, &pwm) ||
-            !app_parse_uint(arg_ms, &duration_ms) || pwm > 999U ||
-            duration_ms < APP_MIN_EXPERIMENT_MS ||
-            duration_ms > APP_MAX_EXPERIMENT_MS) {
+        if (extra != NULL || !app_parse_uint(arg_pwm, &pwm) || !app_parse_uint(arg_ms, &duration_ms) || pwm > 999U || duration_ms < APP_MIN_EXPERIMENT_MS || duration_ms > APP_MAX_EXPERIMENT_MS)
+        {
             console_println(console, "ERR PWM: expected PWM <0..999> <ms> (check bounds)");
             return;
         }
@@ -430,11 +414,13 @@ static void app_handle_command(char *line)
 
 static void app_process_rx(void)
 {
-    for (uint32_t i = 0U; i < APP_RX_BYTES_PER_UPDATE; ++i) {
+    for (uint32_t i = 0U; i < APP_RX_BYTES_PER_UPDATE; ++i)
+    {
         char ch;
         CONSOLE_Status_t status = console_read_char(console, &ch);
         if (status == CONSOLE_NO_DATA) return;
-        if (status != CONSOLE_OK) {
+        if (status != CONSOLE_OK)
+        {
             if (app_state == APP_RUNNING) app_stop_experiment("ERROR UART_RX");
             else if (app_state == APP_IDLE) console_println(console, "ERR UART_RX");
             command_length = 0U;
@@ -442,23 +428,32 @@ static void app_process_rx(void)
             return;
         }
 
-        if (ch == '\r' || ch == '\n') {
-            if (discard_overlong_line) {
+        if (ch == '\r' || ch == '\n')
+        {
+            if (discard_overlong_line)
+            {
                 if (app_state != APP_IDLE) deferred_busy = true;
                 else console_println(console, "ERR LINE_TOO_LONG");
-            } else if (command_length != 0U) {
+            }
+            else if (command_length != 0U)
+            {
                 command_buffer[command_length] = '\0';
                 app_handle_command(command_buffer);
             }
             command_length = 0U;
             discard_overlong_line = false;
-        } else if (ch == '\b' || (uint8_t)ch == 127U) {
+        }
+        else if (ch == '\b' || (uint8_t)ch == 127U)
+        {
             if (!discard_overlong_line && command_length > 0U) --command_length;
-        } else if ((uint8_t)ch >= 32U && (uint8_t)ch <= 126U) {
-            if (!discard_overlong_line) {
-                if (command_length + 1U < sizeof(command_buffer)) {
-                    command_buffer[command_length++] = ch;
-                } else {
+        }
+        else if ((uint8_t)ch >= 32U && (uint8_t)ch <= 126U)
+        {
+            if (!discard_overlong_line)
+            {
+                if (command_length + 1U < sizeof(command_buffer)) command_buffer[command_length++] = ch;
+                else
+                {
                     command_length = 0U;
                     discard_overlong_line = true;
                 }
@@ -497,22 +492,18 @@ void app_update(void)
     app_process_rx();
 
     uint32_t now = systick_get_ms();
-    if (app_state == APP_RUNNING) {
-        if ((uint32_t)(now - experiment_start_ms) >= experiment_duration_ms) {
-            app_stop_experiment("DONE");
-        } else {
+    if (app_state == APP_RUNNING)
+    {
+        if ((uint32_t)(now - experiment_start_ms) >= experiment_duration_ms) app_stop_experiment("DONE");
+        else
+        {
             app_update_status_led(now);
             app_update_motor(now);
         }
     }
 
     app_flush_end_marker();
-    if (app_state == APP_IDLE && deferred_busy &&
-        console_println(console, "ERR BUSY (command ignored during RUN)") == CONSOLE_OK) {
-        deferred_busy = false;
-    }
+    if (app_state == APP_IDLE && deferred_busy && console_println(console, "ERR BUSY (command ignored during RUN)") == CONSOLE_OK) deferred_busy = false;
 
-    for (uint32_t i = 0U; i < APP_TX_SERVICE_CALLS; ++i) {
-        console_process(console);
-    }
+    for (uint32_t i = 0U; i < APP_TX_SERVICE_CALLS; ++i) console_process(console);
 }

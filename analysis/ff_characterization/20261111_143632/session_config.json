@@ -1,0 +1,8 @@
+{
+  "min_pwm": 0,
+  "max_pwm": 999,
+  "step": 25,
+  "duration_ms": 4000,
+  "settle_ms": 2500,
+  "repeats": 2
+}

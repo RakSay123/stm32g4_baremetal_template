@@ -1,0 +1,33 @@
+{
+  "note": "PROVISIONAL; ascending-sweep points only. Do not extrapolate, verify voltage/load and direction.",
+  "points": [
+    {
+      "rpm": 15.24,
+      "pwm": 75
+    },
+    {
+      "rpm": 27.24,
+      "pwm": 100
+    },
+    {
+      "rpm": 38.76,
+      "pwm": 125
+    },
+    {
+      "rpm": 50.24,
+      "pwm": 150
+    },
+    {
+      "rpm": 61.57,
+      "pwm": 175
+    },
+    {
+      "rpm": 72.76,
+      "pwm": 200
+    },
+    {
+      "rpm": 83.76,
+      "pwm": 225
+    }
+  ]
+}

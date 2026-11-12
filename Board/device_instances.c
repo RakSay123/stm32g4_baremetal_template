@@ -30,7 +30,30 @@ static TIM_ENCODER_Config_t tim2_encoder_cfg = {
 	.channel_b_polarity = TIM_ENCODER_POLARITY_NORMAL
 };
 
-static ROTARY_ENCODER_t rotary_encoder_cfg = {
+static TIM_ENCODER_Config_t tim3_encoder_cfg = {
+	.TIMx = TIM3,
+
+	.channel_a_port = GPIOA,
+	.channel_a_pin = 6,
+	.channel_a_AF = GPIO_AF2,
+
+	.channel_b_port = GPIOA,
+	.channel_b_pin = 7,
+	.channel_b_AF = GPIO_AF2,
+
+	.mode = TIM_ENCODER_MODE_TI1_TI2_EDGES,
+
+	.channel_a_filter = TIM_ENCODER_FILTER_NONE,
+	.channel_b_filter = TIM_ENCODER_FILTER_NONE,
+
+	.channel_a_psc = TIM_ENCODER_IC_PSC_NONE,
+	.channel_b_psc = TIM_ENCODER_IC_PSC_NONE,
+
+	.channel_a_polarity = TIM_ENCODER_POLARITY_NORMAL,
+	.channel_b_polarity = TIM_ENCODER_POLARITY_NORMAL
+};
+
+static ROTARY_ENCODER_t left_encoder = {
 	.encoder_cfg = &tim2_encoder_cfg,
 
 	.radius_mm = 1.0f,
@@ -66,24 +89,60 @@ static ROTARY_ENCODER_t rotary_encoder_cfg = {
 	.stopped_sample_threshold = 5U,
 };
 
+static ROTARY_ENCODER_t right_encoder = {
+	.encoder_cfg = &tim3_encoder_cfg,
+
+	.radius_mm = 1.0f,
+
+	.pulses_per_revolution = 210U,
+	.counts_per_revolution = 840U,
+
+	.raw_count = 0U,
+	.previous_raw_count = 0U,
+	.delta_count = 0U,
+	.total_count = 0U,
+
+	.revolutions = 0U,
+	.cumulative_angle_degrees = 0U,
+	.normalized_angle_degrees = 0U,
+
+	.displacement_mm = 0U,
+	.total_distance_mm = 0U,
+
+	.previous_update_ms = 0U,
+	.sample_period_ms = 0U,
+
+	.revolutions_per_second = 0U,
+	.rpm = 0U,
+	.degrees_per_second = 0U,
+	.radians_per_second = 0U,
+	.linear_velocity_mm_per_second = 0U,
+
+	.direction = TIM_ENCODER_DIRECTION_UP,
+	.motion = ROTARY_ENCODER_STOPPED,
+
+	.consecutive_zero_samples = 0U,
+	.stopped_sample_threshold = 5U,
+};
+
 static GPIO_Pin_t ain1_pin = {
-	.port = GPIOC,
-	.pin = 7
+	.port = GPIOB,
+	.pin = 12
 };
 
 static GPIO_Pin_t ain2_pin = {
-	.port = GPIOA,
-	.pin = 9
+	.port = GPIOB,
+	.pin = 13
 };
 
 static GPIO_Pin_t pwma_pin = {
-	.port = GPIOD,
-	.pin = 0
+	.port = GPIOA,
+	.pin = 8
 };
 
 static TIM_PWM_Config_t pwma_cfg = {
 	.TIMx = TIM1,
-	.channel = 2,
+	.channel = 1,
 	.duty_cycle = 0,
 	.pwm_mode = TIM_PWM1
 };
@@ -100,19 +159,19 @@ static GPIO_Pin_t bin2_pin = {
 
 static GPIO_Pin_t pwmb_pin = {
 	.port = GPIOA,
-	.pin = 8
+	.pin = 11
 };
 
 static TIM_PWM_Config_t pwmb_cfg = {
 	.TIMx = TIM1,
-	.channel = 1,
+	.channel = 4,
 	.duty_cycle = 0,
 	.pwm_mode = TIM_PWM1
 };
 
 static GPIO_Pin_t tb6612fng_stby_pin = {
 	.port = GPIOB,
-	.pin = 11
+	.pin = 4
 };
 
 static TB6612FNG_Channel_Config_t tb6612fng_cha = {
@@ -120,7 +179,7 @@ static TB6612FNG_Channel_Config_t tb6612fng_cha = {
 	.in2 = &ain2_pin,
 
 	.pwm_pin = &pwma_pin,
-	.pwm_af = GPIO_AF2,
+	.pwm_af = GPIO_AF6,
 	.pwm = &pwma_cfg
 };
 
@@ -129,7 +188,7 @@ static TB6612FNG_Channel_Config_t tb6612fng_chb = {
 	.in2 = &bin2_pin,
 
 	.pwm_pin = &pwmb_pin,
-	.pwm_af = GPIO_AF6,
+	.pwm_af = GPIO_AF11,
 	.pwm = &pwmb_cfg
 };
 
@@ -141,38 +200,48 @@ static TB6612FNG_t tb6612fng = {
 
 static MOTOR_DRIVER_t motor_driver;
 
-static DC_MOTOR_t motor = {
+static DC_MOTOR_t left_motor = {
+	.motor_driver = &motor_driver,
+	.driver_channel = TB6612FNG_CHA
+};
+
+static DC_MOTOR_t right_motor = {
 	.motor_driver = &motor_driver,
 	.driver_channel = TB6612FNG_CHB
 };
 
-static MOTOR_CONTROLLER_t motor_controller = {
-	.encoder = &rotary_encoder_cfg,
-	.motor = &motor,
+static MOTOR_CONTROLLER_t left_motor_controller = {
+	.encoder = &left_encoder,
+	.motor = &left_motor,
 };
 
-static const GPIO_AF_Pin_t USART2_TX = {
+static MOTOR_CONTROLLER_t right_motor_controller = {
+	.encoder = &right_encoder,
+	.motor = &right_motor,
+};
+
+static const GPIO_AF_Pin_t USART1_TX = {
 	.port = GPIOA,
-	.pin = 2,
+	.pin = 9,
 	.alt = GPIO_AF7
 };
 
-static const GPIO_AF_Pin_t USART2_RX = {
+static const GPIO_AF_Pin_t USART1_RX = {
 	.port = GPIOA,
-	.pin = 3,
+	.pin = 10,
 	.alt = GPIO_AF7
 };
 
 static const UART_Config_t uart_cfg = {
-	.USARTx = USART2,
+	.USARTx = USART1,
 	.peripheral_clock_hz = BOARD_FCLK_HZ,
 	.baud_rate = BOARD_DEBUG_UART_BAUD,
 };
 
 static CONSOLE_t console = {
 	.uart_cfg = &uart_cfg,
-	.tx = &USART2_TX,
-	.rx = &USART2_RX
+	.tx = &USART1_TX,
+	.rx = &USART1_RX
 };
 
 LED_t* board_get_status_led(void)
@@ -180,9 +249,14 @@ LED_t* board_get_status_led(void)
 	return &status_led;
 }
 
-ROTARY_ENCODER_t* board_get_motor_encoder(void)
+ROTARY_ENCODER_t* board_get_left_motor_encoder(void)
 {
-	return &rotary_encoder_cfg;
+	return &left_encoder;
+}
+
+ROTARY_ENCODER_t* board_get_right_motor_encoder(void)
+{
+	return &right_encoder;
 }
 
 TB6612FNG_t* board_get_tb6612fng(void)
@@ -195,14 +269,24 @@ MOTOR_DRIVER_t* board_get_motor_driver(void)
 	return &motor_driver;
 }
 
-DC_MOTOR_t* board_get_motor(void)
+DC_MOTOR_t* board_get_left_motor(void)
 {
-	return &motor;
+	return &left_motor;
 }
 
-MOTOR_CONTROLLER_t* board_get_motor_controller(void)
+DC_MOTOR_t* board_get_right_motor(void)
 {
-	return &motor_controller;
+	return &right_motor;
+}
+
+MOTOR_CONTROLLER_t* board_get_left_motor_controller(void)
+{
+	return &left_motor_controller;
+}
+
+MOTOR_CONTROLLER_t* board_get_right_motor_controller(void)
+{
+	return &right_motor_controller;
 }
 
 CONSOLE_t* board_get_console(void)

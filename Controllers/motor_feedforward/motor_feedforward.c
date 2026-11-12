@@ -7,8 +7,7 @@
 
 #define MOTOR_FF_FIRST_RELIABLE_INDEX 1U
 
-MOTOR_FEEDFORWARD_Status_t motor_feedforward_get_pwm(float target_rpm,
-                                                    float *output_pwm)
+MOTOR_FEEDFORWARD_Status_t motor_feedforward_get_pwm(float target_rpm, float *output_pwm)
 {
     if (output_pwm == NULL || !isfinite(target_rpm) || target_rpm < 0.0f) return MOTOR_FEEDFORWARD_ERR;
 

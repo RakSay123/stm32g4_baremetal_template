@@ -23,8 +23,7 @@ MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller, 
     return MOTOR_CONTROLLER_OK;
 }
 
-MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controller,
-                                                    float target_rpm)
+MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controller, float target_rpm)
 {
     if (controller == NULL || !isfinite(target_rpm) || target_rpm < 0.0f) return MOTOR_CONTROLLER_ERR;
     if (controller->feedforward_enabled)
@@ -73,7 +72,8 @@ MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller
     controller->measured_rpm = measured_rpm;
     controller->error = controller->target_rpm - measured_rpm;
 
-    if (controller->target_rpm == 0.0f) {
+    if (controller->target_rpm == 0.0f)
+    {
         if (dc_motor_brake(controller->motor) != DC_MOTOR_OK || pid_reset(&controller->pid) != PID_OK) return MOTOR_CONTROLLER_ERR;
         controller->feedforward_output = 0.0f;
         controller->control_output = 0.0f;
