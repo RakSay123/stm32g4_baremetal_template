@@ -83,6 +83,8 @@ static MOTOR_CONTROLLER_t motor2_controller = {
 	.ff_lut = &motor2_ff,
 };
 
+static DUAL_MOTOR_CONTROLLER_t dual_motor_controller;
+
 DUAL_MOTOR_Status_t dual_motor_init(void)
 {
 	MOTOR_DRIVER_t *motor_driver = board_get_motor_driver();
@@ -105,4 +107,9 @@ DC_MOTOR_t* board_get_motor2(void)
 MOTOR_CONTROLLER_t* board_get_motor2_controller(void)
 {
 	return &motor2_controller;
+}
+
+DUAL_MOTOR_CONTROLLER_t* board_get_dual_motor_controller(void)
+{
+	return &dual_motor_controller;
 }

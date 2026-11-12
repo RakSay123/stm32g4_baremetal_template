@@ -59,11 +59,13 @@ BOARD_Status_t board_init(void)
 	MOTOR_DRIVER_t *motor_driver = board_get_motor_driver();
 	MOTOR_CONTROLLER_t *motor_controller = board_get_motor_controller();
 	MOTOR_CONTROLLER_t *motor2_controller = board_get_motor2_controller();
+	DUAL_MOTOR_CONTROLLER_t *dual_motor_controller = board_get_dual_motor_controller();
 	CONSOLE_t *console = board_get_console();
 
 
 	if (status_led == NULL) return BOARD_STATUS_LED_ERROR;
 	if (motor2_controller == NULL) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
+	if (dual_motor_controller == NULL) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
 	if (tb6612fng == NULL) return BOARD_STATUS_TB6612FNG_ERROR;
 	if (motor_driver == NULL) return BOARD_STATUS_MOTOR_DRIVER_ERROR;
 	if (motor_controller == NULL) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
@@ -80,6 +82,7 @@ BOARD_Status_t board_init(void)
 	if (motor_controller_init(motor_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_b->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
 	if (dual_motor_init() != DUAL_MOTOR_OK) return BOARD_STATUS_MOTOR_DRIVER_ERROR;
 	if (motor_controller_init(motor2_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_a->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
+	if (dual_motor_controller_init(dual_motor_controller, motor_controller, motor2_controller) != DUAL_MOTOR_CONTROLLER_OK) return BOARD_STATUS_MOTOR_CONTROLLER_ERROR;
 	if (console_init(console) != CONSOLE_OK) return BOARD_STATUS_CONSOLE_ERROR;
 
 	return BOARD_STATUS_OK;
