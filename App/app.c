@@ -32,6 +32,9 @@ static LED_t *led;
 static DC_MOTOR_t *dc_motor;
 static ROTARY_ENCODER_t *encoder;
 static MOTOR_CONTROLLER_t *controller;
+static DC_MOTOR_t *dc_motor2;
+static ROTARY_ENCODER_t *encoder2;
+static MOTOR_CONTROLLER_t *controller2;
 static CONSOLE_t *console;
 
 static APP_State_t app_state = APP_IDLE;
@@ -99,7 +102,9 @@ static bool app_log_controller(uint32_t current_ms)
 static void app_stop_experiment(const char *reason)
 {
     motor_controller_disable(controller);
+    motor_controller_disable(controller2);
     dc_motor_brake(dc_motor);
+    dc_motor_brake(dc_motor2);
     led_off(led);
 
     if (app_state == APP_RUNNING) {
@@ -141,14 +146,17 @@ static void app_update_motor(uint32_t current_ms)
     float dt_seconds = (float)elapsed_ms / 1000.0f;
 
     if (app_mode == APP_MODE_PID) {
-        if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK) {
+        if (motor_controller_update(controller, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK ||
+            motor_controller_update(controller2, current_ms, dt_seconds) != MOTOR_CONTROLLER_OK) {
             app_stop_experiment("ERROR MOTOR");
             return;
         }
     } else {
         // Open-loop mode: PID is DISABLED. Only update encoder measurements.
         if (rotary_encoder_update_distance(encoder) != ROTARY_ENCODER_OK ||
-            rotary_encoder_update_velocity(encoder, current_ms) != ROTARY_ENCODER_OK) {
+            rotary_encoder_update_velocity(encoder, current_ms) != ROTARY_ENCODER_OK ||
+            rotary_encoder_update_distance(encoder2) != ROTARY_ENCODER_OK ||
+            rotary_encoder_update_velocity(encoder2, current_ms) != ROTARY_ENCODER_OK) {
             app_stop_experiment("ERROR ENCODER");
             return;
         }
@@ -156,6 +164,11 @@ static void app_update_motor(uint32_t current_ms)
         controller->target_rpm = 0.0f; // Sentinel: no closed-loop target.
         controller->error = -controller->measured_rpm;
         controller->control_output = (float)experiment_pwm;
+
+        controller2->measured_rpm = rotary_encoder_get_rpm(encoder2);
+        controller2->target_rpm = 0.0f;
+        controller2->error = -controller2->measured_rpm;
+        controller2->control_output = (float)experiment_pwm;
     }
 
     if (!app_log_controller(current_ms)) {
@@ -224,10 +237,15 @@ static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
     }
 
     motor_controller_disable(controller);
+    motor_controller_disable(controller2);
     if (dc_motor_brake(dc_motor) != DC_MOTOR_OK ||
+        dc_motor_brake(dc_motor2) != DC_MOTOR_OK ||
         pid_reset(&controller->pid) != PID_OK ||
+        pid_reset(&controller2->pid) != PID_OK ||
         rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK ||
-        motor_controller_set_rpm(controller, target_rpm) != MOTOR_CONTROLLER_OK) {
+        rotary_encoder_set_count_zero(encoder2) != ROTARY_ENCODER_OK ||
+        motor_controller_set_rpm(controller, target_rpm) != MOTOR_CONTROLLER_OK ||
+        motor_controller_set_rpm(controller2, target_rpm) != MOTOR_CONTROLLER_OK) {
         console_println(console, "ERR START");
         return false;
     }
@@ -236,9 +254,13 @@ static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
     controller->measured_rpm = 0.0f;
     controller->error = target_rpm;
     controller->control_output = 0.0f;
+    controller2->measured_rpm = 0.0f;
+    controller2->error = target_rpm;
+    controller2->control_output = 0.0f;
 
     // Consistent epoch for velocity estimation and the CSV timestamps.
     encoder->previous_update_ms = now;
+    encoder2->previous_update_ms = now;
     previous_controller_update_ms = now;
     previous_led_toggle_ms = now;
     experiment_start_ms = now;
@@ -252,6 +274,7 @@ static bool app_start_experiment(float target_rpm, uint32_t duration_ms)
 
     app_state = APP_RUNNING;
     motor_controller_enable(controller);
+    motor_controller_enable(controller2);
     return true;
 }
 
@@ -270,11 +293,17 @@ static bool app_start_pwm_experiment(uint16_t pwm, uint32_t duration_ms)
     // Do NOT call motor_controller_update() during PWM testing.
     // Reset PID and encoder to make transitions between modes deterministic.
     motor_controller_disable(controller);
+    motor_controller_disable(controller2);
     if (dc_motor_brake(dc_motor) != DC_MOTOR_OK ||
+        dc_motor_brake(dc_motor2) != DC_MOTOR_OK ||
         pid_reset(&controller->pid) != PID_OK ||
+        pid_reset(&controller2->pid) != PID_OK ||
         rotary_encoder_set_count_zero(encoder) != ROTARY_ENCODER_OK ||
-        motor_controller_set_rpm(controller, 0.0f) != MOTOR_CONTROLLER_OK) {
+        rotary_encoder_set_count_zero(encoder2) != ROTARY_ENCODER_OK ||
+        motor_controller_set_rpm(controller, 0.0f) != MOTOR_CONTROLLER_OK ||
+        motor_controller_set_rpm(controller2, 0.0f) != MOTOR_CONTROLLER_OK) {
         dc_motor_brake(dc_motor);
+        dc_motor_brake(dc_motor2);
         console_println(console, "ERR START");
         return false;
     }
@@ -284,8 +313,12 @@ static bool app_start_pwm_experiment(uint16_t pwm, uint32_t duration_ms)
     controller->measured_rpm = 0.0f;
     controller->error = 0.0f;
     controller->control_output = (float)pwm;
+    controller2->measured_rpm = 0.0f;
+    controller2->error = 0.0f;
+    controller2->control_output = (float)pwm;
 
     encoder->previous_update_ms = now;
+    encoder2->previous_update_ms = now;
     previous_controller_update_ms = now;
     previous_led_toggle_ms = now;
     experiment_start_ms = now;
@@ -296,6 +329,8 @@ static bool app_start_pwm_experiment(uint16_t pwm, uint32_t duration_ms)
     // application timer never starts *after* the motor is powered.
     app_state = APP_RUNNING;
     if (dc_motor_set_speed_and_direction(dc_motor, MOTOR_DRIVER_FORWARD,
+                                          (float)pwm) != DC_MOTOR_OK ||
+        dc_motor_set_speed_and_direction(dc_motor2, MOTOR_DRIVER_FORWARD,
                                           (float)pwm) != DC_MOTOR_OK) {
         app_stop_experiment("ERROR MOTOR");
         // Nothing is streamed yet; return to idle safely instead.
@@ -337,7 +372,9 @@ static void app_handle_command(char *line)
 
     if (strcmp(cmd, "STOP") == 0 && strtok(NULL, " \t") == NULL) {
         motor_controller_disable(controller);
+        motor_controller_disable(controller2);
         dc_motor_brake(dc_motor);
+        dc_motor_brake(dc_motor2);
         console_println(console, "OK STOP IDLE");
         return;
     }
@@ -352,7 +389,8 @@ static void app_handle_command(char *line)
         }
 
         bool enabled = strcmp(mode, "ON") == 0;
-        if (motor_controller_set_feedforward(controller, enabled) != MOTOR_CONTROLLER_OK) {
+        if (motor_controller_set_feedforward(controller, enabled) != MOTOR_CONTROLLER_OK ||
+            motor_controller_set_feedforward(controller2, enabled) != MOTOR_CONTROLLER_OK) {
             console_println(console, "ERR FF: requested target outside characterized RPM range");
             return;
         }
@@ -381,6 +419,10 @@ static void app_handle_command(char *line)
         controller->pid.ki = ki;
         controller->pid.kd = kd;
         pid_reset(&controller->pid);
+        controller2->pid.kp = kp;
+        controller2->pid.ki = ki;
+        controller2->pid.kd = kd;
+        pid_reset(&controller2->pid);
         console_println(console, "OK PID");
         return;
     }
@@ -476,12 +518,17 @@ void app_init(void)
     dc_motor = board_get_motor();
     encoder = board_get_motor_encoder();
     controller = board_get_motor_controller();
+    dc_motor2 = board_get_motor2();
+    encoder2 = board_get_motor2_encoder();
+    controller2 = board_get_motor2_controller();
     console = board_get_console();
 
     if (led == NULL || dc_motor == NULL || encoder == NULL || controller == NULL || console == NULL) return;
+    if (dc_motor2 == NULL || encoder2 == NULL || controller2 == NULL) return;
 
     motor_controller_disable(controller);
-    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK) return;
+    motor_controller_disable(controller2);
+    if (dc_motor_brake(dc_motor) != DC_MOTOR_OK || dc_motor_brake(dc_motor2) != DC_MOTOR_OK) return;
     led_off(led);
 
     app_ready = true;
