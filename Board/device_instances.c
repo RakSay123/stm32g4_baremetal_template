@@ -220,6 +220,12 @@ static MOTOR_CONTROLLER_t right_motor_controller = {
 	.motor = &right_motor,
 };
 
+static DUAL_MOTOR_CONTROLLER_t dual = {
+	.left = &left_motor_controller,
+	.right = &right_motor_controller,
+	.enabled = false
+};
+
 static const GPIO_AF_Pin_t USART1_TX = {
 	.port = GPIOA,
 	.pin = 9,
@@ -287,6 +293,11 @@ MOTOR_CONTROLLER_t* board_get_left_motor_controller(void)
 MOTOR_CONTROLLER_t* board_get_right_motor_controller(void)
 {
 	return &right_motor_controller;
+}
+
+DUAL_MOTOR_CONTROLLER_t* board_get_dual_motor_controller(void)
+{
+	return &dual;
 }
 
 CONSOLE_t* board_get_console(void)

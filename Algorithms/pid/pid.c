@@ -54,11 +54,14 @@ PID_Status_t pid_update_with_bias(PID_t *pid, float *output, float setpoint, flo
     if (!isfinite(setpoint) || !isfinite(measurement) || !isfinite(dt_seconds) || dt_seconds <= 0.0f || !isfinite(bias)) return PID_ERR;
 
     const float error = setpoint - measurement;
+
     const float p_term = pid->kp * error;
     float d_term = 0.0f;
 
-    if (pid->kd != 0.0f) {
-        if (pid->has_previous_measurement) {
+    if (pid->kd != 0.0f)
+    {
+        if (pid->has_previous_measurement)
+        {
             const float raw_derivative = (measurement - pid->previous_measurement) / dt_seconds;
             const float alpha = dt_seconds / (pid->derivative_filter_tau + dt_seconds);
             pid->filtered_derivative += alpha * (raw_derivative - pid->filtered_derivative);
@@ -70,22 +73,20 @@ PID_Status_t pid_update_with_bias(PID_t *pid, float *output, float setpoint, flo
     pid->has_previous_measurement = true;
 
     const float candidate_integral = pid->integral + error * dt_seconds;
-    const float candidate_output = bias + p_term + pid->ki * candidate_integral + d_term;
+    const float i_term = pid->ki * candidate_integral;
+    const float candidate_output = bias + p_term + i_term + d_term;
 
     if (!isfinite(candidate_output)) return PID_ERR;
 
-    if (candidate_output > pid->output_max)
+    if (candidate_output < pid->output_min)
+    {
+    	if (error > 0.0f) pid->integral = candidate_integral;
+    }
+    else if (candidate_output > pid->output_max)
     {
         if (error < 0.0f) pid->integral = candidate_integral;
     }
-    else if (candidate_output < pid->output_min)
-    {
-        if (error > 0.0f) pid->integral = candidate_integral;
-    }
-    else
-    {
-        pid->integral = candidate_integral;
-    }
+    else pid->integral = candidate_integral;
 
     const float combined_output = bias + p_term + pid->ki * pid->integral + d_term;
     if (!isfinite(combined_output)) return PID_ERR;

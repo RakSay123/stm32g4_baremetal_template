@@ -6,6 +6,7 @@
 #include "motor_driver/motor_driver.h"
 #include "dc_motor/dc_motor.h"
 #include "motor_controller/motor_controller.h"
+#include "dual_motor_controller/dual_motor_controller.h"
 #include "console/console.h"
 
 LED_t* board_get_status_led(void);
@@ -25,5 +26,7 @@ DC_MOTOR_t* board_get_right_motor(void);
 MOTOR_CONTROLLER_t* board_get_left_motor_controller(void);
 
 MOTOR_CONTROLLER_t* board_get_right_motor_controller(void);
+
+DUAL_MOTOR_CONTROLLER_t* board_get_dual_motor_controller(void);
 
 CONSOLE_t* board_get_console(void);

@@ -19,6 +19,7 @@
 #include "tb6612fng/tb6612fng_motor_driver.h"
 #include "dc_motor/dc_motor.h"
 #include "motor_controller/motor_controller.h"
+#include "dual_motor_controller/dual_motor_controller.h"
 #include "console/console.h"
 
 static SYSTICK_Config_t systick_cfg = {
@@ -57,6 +58,7 @@ BOARD_Status_t board_init(void)
 	MOTOR_DRIVER_t *motor_driver = board_get_motor_driver();
 	MOTOR_CONTROLLER_t *left_motor_controller = board_get_left_motor_controller();
 	MOTOR_CONTROLLER_t *right_motor_controller = board_get_right_motor_controller();
+	DUAL_MOTOR_CONTROLLER_t *dual = board_get_dual_motor_controller();
 	CONSOLE_t *console = board_get_console();
 
 
@@ -77,6 +79,7 @@ BOARD_Status_t board_init(void)
 	if (tb6612fng_motor_driver_bind(motor_driver, tb6612fng) != MOTOR_DRIVER_OK) return BOARD_STATUS_MOTOR_DRIVER_ERROR;
 	if (motor_controller_init(left_motor_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_a->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_LEFT_MOTOR_CONTROLLER_ERROR;
 	if (motor_controller_init(right_motor_controller, KP, KI, KD, 0.0f, (float)tb6612fng->channel_b->pwm->TIMx->ARR) != MOTOR_CONTROLLER_OK) return BOARD_STATUS_RIGHT_MOTOR_CONTROLLER_ERROR;
+	if (dual_motor_controller_init(dual, left_motor_controller, right_motor_controller) != DUAL_MOTOR_CONTROLLER_OK) return BOARD_STATUS_DUAL_MOTOR_CONTROLLER_ERROR;
 	if (console_init(console) != CONSOLE_OK) return BOARD_STATUS_CONSOLE_ERROR;
 
 	return BOARD_STATUS_OK;

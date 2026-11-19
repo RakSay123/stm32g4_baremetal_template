@@ -3,6 +3,7 @@
 #include "dc_motor/dc_motor.h"
 #include "rotary_encoder/rotary_encoder.h"
 #include "pid/pid.h"
+#include "motor_feedforward/motor_feedforward.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -10,6 +11,14 @@ typedef enum {
     MOTOR_CONTROLLER_OK,
     MOTOR_CONTROLLER_ERR,
 } MOTOR_CONTROLLER_Status_t;
+
+typedef enum {
+    MOTOR_CONTROLLER_FAULT_NONE = 0,
+    MOTOR_CONTROLLER_FAULT_DIRECTION,
+    MOTOR_CONTROLLER_FAULT_STALL,
+    MOTOR_CONTROLLER_FAULT_ENCODER,
+    MOTOR_CONTROLLER_FAULT_ACTUATOR
+} MOTOR_CONTROLLER_Fault_t;
 
 typedef struct {
     DC_MOTOR_t *motor;
@@ -19,11 +28,15 @@ typedef struct {
     float target_rpm;
     float measured_rpm;
     float error;
-    float control_output;        /* The actual (integer) motor PWM commanded. */
-    float feedforward_output;    /* Unsaturated feedforward PWM, for diagnostics. */
+    float control_output;
+    float feedforward_output;
 
-    bool feedforward_enabled;    /* Defaults OFF: preserves PID-only behavior. */
+    bool feedforward_enabled;
     bool enabled;
+
+    MOTOR_CONTROLLER_Fault_t fault;
+	uint32_t direction_fault_ms;
+	uint32_t stall_fault_ms;
 } MOTOR_CONTROLLER_t;
 
 MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller, float kp, float ki, float kd, float output_min, float output_max);
