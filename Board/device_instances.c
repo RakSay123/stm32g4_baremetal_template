@@ -153,8 +153,8 @@ static GPIO_Pin_t bin1_pin = {
 };
 
 static GPIO_Pin_t bin2_pin = {
-	.port = GPIOB,
-	.pin = 15
+	.port = GPIOC,
+	.pin = 10
 };
 
 static GPIO_Pin_t pwmb_pin = {

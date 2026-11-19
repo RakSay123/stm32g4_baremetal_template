@@ -25,11 +25,11 @@ MOTOR_CONTROLLER_Status_t motor_controller_init(MOTOR_CONTROLLER_t *controller, 
 
 MOTOR_CONTROLLER_Status_t motor_controller_set_rpm(MOTOR_CONTROLLER_t *controller, float target_rpm)
 {
-    if (controller == NULL || !isfinite(target_rpm) || target_rpm < 0.0f) return MOTOR_CONTROLLER_ERR;
+    if (controller == NULL || !isfinite(target_rpm)) return MOTOR_CONTROLLER_ERR;
     if (controller->feedforward_enabled)
     {
         float ignored;
-        if (motor_feedforward_get_pwm(target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+        if (motor_feedforward_get_pwm(fabsf(target_rpm), &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
     }
     controller->target_rpm = target_rpm;
     return MOTOR_CONTROLLER_OK;
@@ -44,10 +44,10 @@ MOTOR_CONTROLLER_Status_t motor_controller_set_feedforward(MOTOR_CONTROLLER_t *c
 {
     if (controller == NULL) return MOTOR_CONTROLLER_ERR;
 
-    if (enabled && controller->target_rpm > 0.0f)
+    if (enabled)
     {
         float ignored;
-        if (motor_feedforward_get_pwm(controller->target_rpm, &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+        if (motor_feedforward_get_pwm(fabsf(controller->target_rpm), &ignored) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
     }
     if (controller->feedforward_enabled != enabled)
     {
@@ -65,8 +65,8 @@ MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller
     if (!isfinite(dt_seconds) || dt_seconds <= 0.0f) return MOTOR_CONTROLLER_ERR;
 
     if (rotary_encoder_update_distance(controller->encoder) != ROTARY_ENCODER_OK || rotary_encoder_update_velocity(controller->encoder, current_ms) != ROTARY_ENCODER_OK) return MOTOR_CONTROLLER_ERR;
-
     const float measured_rpm = rotary_encoder_get_rpm(controller->encoder);
+
     if (!isfinite(measured_rpm)) return MOTOR_CONTROLLER_ERR;
 
     controller->measured_rpm = measured_rpm;
@@ -75,23 +75,35 @@ MOTOR_CONTROLLER_Status_t motor_controller_update(MOTOR_CONTROLLER_t *controller
     if (controller->target_rpm == 0.0f)
     {
         if (dc_motor_brake(controller->motor) != DC_MOTOR_OK || pid_reset(&controller->pid) != PID_OK) return MOTOR_CONTROLLER_ERR;
+
         controller->feedforward_output = 0.0f;
         controller->control_output = 0.0f;
+
         return MOTOR_CONTROLLER_OK;
     }
 
+    const bool reverse = controller->target_rpm < 0.0f;
+
+    const float target_speed = fabsf(controller->target_rpm);
+    const float aligned_speed = reverse ? -measured_rpm : measured_rpm;
+
+    const MOTOR_DRIVER_Direction_t direction = reverse ? MOTOR_DRIVER_REVERSE : MOTOR_DRIVER_FORWARD;
+
     float ff_pwm = 0.0f;
-    if (controller->feedforward_enabled && motor_feedforward_get_pwm(controller->target_rpm, &ff_pwm) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
+    if (controller->feedforward_enabled && motor_feedforward_get_pwm(target_speed, &ff_pwm) != MOTOR_FEEDFORWARD_OK) return MOTOR_CONTROLLER_ERR;
 
     float combined_pwm = 0.0f;
-    if (pid_update_with_bias(&controller->pid, &combined_pwm, controller->target_rpm, measured_rpm, dt_seconds, ff_pwm) != PID_OK) return MOTOR_CONTROLLER_ERR;
+    if (pid_update_with_bias(&controller->pid, &combined_pwm, target_speed, aligned_speed, dt_seconds, ff_pwm) != PID_OK) return MOTOR_CONTROLLER_ERR;
+
     if (!isfinite(combined_pwm) || combined_pwm < 0.0f || combined_pwm > 65535.0f) return MOTOR_CONTROLLER_ERR;
 
     const uint16_t pwm = (uint16_t)combined_pwm;
-    if (dc_motor_set_speed_and_direction(controller->motor, MOTOR_DRIVER_FORWARD, pwm) != DC_MOTOR_OK) return MOTOR_CONTROLLER_ERR;
+
+    if (dc_motor_set_speed_and_direction(controller->motor, direction, pwm) != DC_MOTOR_OK) return MOTOR_CONTROLLER_ERR;
 
     controller->feedforward_output = ff_pwm;
     controller->control_output = (float)pwm;
+
     return MOTOR_CONTROLLER_OK;
 }
 

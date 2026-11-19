@@ -37,8 +37,7 @@ PID_Status_t pid_reset(PID_t *pid)
 
 PID_Status_t pid_set_derivative_filter(PID_t *pid, float tau_seconds)
 {
-    if (pid == NULL || !isfinite(tau_seconds) || tau_seconds < 0.0f)
-        return PID_ERR;
+    if (pid == NULL || !isfinite(tau_seconds) || tau_seconds < 0.0f) return PID_ERR;
     pid->derivative_filter_tau = tau_seconds;
     return PID_OK;
 }
