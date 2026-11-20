@@ -1,11 +1,16 @@
 #pragma once
 
-#define APP_STATUS_LED_PERIOD_MS       500U
-#define APP_CONTROL_PERIOD_MS          20U
+#define APP_STATUS_LED_PERIOD_MS 500U
+#define APP_CONTROL_PERIOD_MS    20U
+#define APP_PRINT_PERIOD_MS      100U
 
-#define APP_STEP_PERIOD_MS 			   1000U
-#define APP_STEP_COUNT 				   8U
+#define APP_SETTLE_TIME_MS       500U
+#define APP_IDLE_RPM_TOLERANCE   10.0f
+#define APP_MIN_SPEED_FRACTION   0.45f
+#define APP_PASS_FRACTION        0.70f
+#define APP_WRONG_RPM_THRESHOLD  20.0f
+#define APP_WRONG_SAMPLE_LIMIT   5U
 
-#define APP_TEST_DURATION_S			   24U
-#define APP_TEST_DURATION_MS  		   (APP_TEST_DURATION_S * 1000U)
-#define APP_PRINT_PERIOD_MS   		   50U
+#define APP_MAX_KP 20.0f
+#define APP_MAX_KI 40.0f
+#define APP_MAX_KD 0.5f
